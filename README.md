@@ -35,4 +35,6 @@ Here are some of the tasks that we need to complete are listed as follows:
 - [ ] Ground truth generation: Generates ground truth for puzzle
 - [ ] (Optional) Hint: Allows users to seek hint
 - [ ] (Optional) Metrics generation: Computes the time spent on each game and output score for users.
+- [ ] (Optional) Ranking Competition: Rank among all game players based on the number of levels passed within the limited game time.
+- [ ] (Optional) Colorblind Mode: Replace the original color gradient with a grayscale gradient, where the grayscale level of each block corresponds to the brightness of its original color.
 
