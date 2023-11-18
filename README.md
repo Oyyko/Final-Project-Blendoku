@@ -8,7 +8,7 @@ Our team is going to build a game called **Blendoku** with Haskell.
 The game often includes challenges related to color perception, pattern recognition, and logical thinking. Blendoku has been available on various platforms, including mobile devices, and it has gained popularity for its unique and engaging approach to color-based puzzles. Players find it both entertaining and a good exercise for improving their understanding of color relationships.
 
 ## Game rules
-In Blendoku, players are given a grid of squares, some with colors provided, some not. A palette of additional color tiles is provided. To clear a level, a player must "fill in" the empty squares from the palette in such a way as to create smooth sequences of colors both horizontally and vertically, i.e. the depth of color increases monotously from left to right and from top to bottom. 
+In Blendoku, players are given a grid of squares, some with colors provided, some not. A palette of additional color tiles is provided. To clear a level, a player must "fill in" the empty squares from the palette in such a way as to create smooth sequences of colors both horizontally and vertically, i.e. the depth of color increases monotonously from left to right and from top to bottom. 
 
 ## Related work
 
