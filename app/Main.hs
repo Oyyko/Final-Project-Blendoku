@@ -1,6 +1,9 @@
 module Main (main) where
 
 import Lib
+import GameUI (playGame)
 
 main :: IO ()
-main = someFunc
+main = do
+    playGame
+    pure ()
