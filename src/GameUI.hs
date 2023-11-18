@@ -43,9 +43,7 @@ drawUI ui =
   $ padRight (Pad 21)
   $ hBox
       [ 
-        str "Hello World"
-        -- drawGrid ui
-    --   , padRight Max $ padLeft (Pad 2) $ drawInfo (ui ^. game)
+        cellWidget
       ]
   ]
 
@@ -74,4 +72,18 @@ gameAttrMap :: AttrMap
 gameAttrMap = attrMap
   V.defAttr
   [ 
+    (cellAttr, testColor1 `on` testColor2)
   ]
+
+cellWidget :: Widget Name
+cellWidget = withAttr cellAttr $ str "Hello World"
+
+cellAttr :: AttrName
+cellAttr = attrName "cell"
+
+testColor1 ::V.Color
+testColor1 = V.RGBColor 255 0 0
+
+testColor2 ::V.Color
+testColor2 = V.RGBColor 0 255 0
+
