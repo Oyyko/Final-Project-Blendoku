@@ -24,6 +24,8 @@ dependencies:
 - brick
 - lens
 - vty
+- containers
+- linear
 
 ghc-options:
 - -Wall

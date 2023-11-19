@@ -38,7 +38,9 @@ library
   build-depends:
       base >=4.7 && <5
     , brick
+    , containers
     , lens
+    , linear
     , vty
   default-language: Haskell2010
 
@@ -55,7 +57,9 @@ executable Blendoku-exe
       Blendoku
     , base >=4.7 && <5
     , brick
+    , containers
     , lens
+    , linear
     , vty
   default-language: Haskell2010
 
@@ -73,6 +77,8 @@ test-suite Blendoku-test
       Blendoku
     , base >=4.7 && <5
     , brick
+    , containers
     , lens
+    , linear
     , vty
   default-language: Haskell2010

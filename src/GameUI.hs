@@ -5,13 +5,17 @@ module GameUI
         playGame
     ) where
 
-import Control.Lens (makeLenses, (^.))
+import Control.Lens (makeLenses, (^.), (<&>))
 import qualified Brick.Widgets.Center as C
 import Brick 
 import Brick.BChan (newBChan, writeBChan)
+import qualified Brick.Widgets.Border as B
+import qualified Brick.Widgets.Border.Style as BS
 import Control.Concurrent (threadDelay, forkIO)
 import Control.Monad (void, forever)
 import qualified Graphics.Vty as V
+import Linear.V2 (V2(..))
+import Data.Map as M (Map, filterWithKey, fromList)
 
 import Blendoku
 
@@ -38,14 +42,26 @@ app = App
 drawUI :: UI -> [Widget Name]
 drawUI ui =
   [ C.center 
-  $ vLimit 22 
-  $ padLeft (Pad 25)
-  $ padRight (Pad 21)
-  $ hBox
-      [ 
-        cellWidget
-      ]
+  $ vBox 
+    [
+        drawBoard ui
+    ]
   ]
+
+drawBoard :: UI -> Widget Name
+drawBoard ui =
+    withBorderStyle BS.unicodeBold
+    $ B.borderWithLabel (str "Blendoku")
+    $ case ui ^. paused of
+      True -> C.center $ str "Paused"
+      False -> vBox $ [boardHeight, boardHeight - 1 .. 1] <&> \r ->
+          foldr (<+>) emptyWidget
+            . M.filterWithKey (\(V2 _ y) _ -> r == y)
+            $ mconcat
+                [ 
+                  emptyCellMap
+                ]
+
 
 playGame :: IO Game
 playGame = do
@@ -86,4 +102,24 @@ testColor1 = V.RGBColor 255 0 0
 
 testColor2 ::V.Color
 testColor2 = V.RGBColor 0 255 0
+
+emptyCellMap :: Map Coord (Widget Name)
+emptyCellMap = M.fromList
+  [ (V2 x y, emptyGridCellW) | x <- [1 .. boardWidth], y <- [1 .. boardHeight] ]
+
+emptyGridCellW :: Widget Name
+emptyGridCellW = withAttr emptyAttr cw
+
+emptyAttr :: AttrName
+emptyAttr = attrName "empty"
+
+cw :: Widget Name
+cw = str "  "
+
+boardWidth :: Int
+boardHeight ::Int
+cellSize :: Int
+boardWidth = 10
+boardHeight = 10
+cellSize = 1
 
