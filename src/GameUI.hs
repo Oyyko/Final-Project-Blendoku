@@ -15,7 +15,7 @@ import Control.Concurrent (threadDelay, forkIO)
 import Control.Monad (void, forever)
 import qualified Graphics.Vty as V
 import Linear.V2 (V2(..))
-import Data.Map as M (Map, filterWithKey, fromList)
+import Data.Map as M (Map, filterWithKey, fromList, toList, elems)
 
 import Blendoku
 
@@ -52,16 +52,28 @@ drawBoard :: UI -> Widget Name
 drawBoard ui =
     withBorderStyle BS.unicodeBold
     $ B.borderWithLabel (str "Blendoku")
-    $ case ui ^. paused of
-      True -> C.center $ str "Paused"
-      False -> vBox $ [boardHeight, boardHeight - 1 .. 1] <&> \r ->
+    $ if ui ^. paused then
+        C.center $ str "Paused"
+    else
+      vBox $ [boardHeight, boardHeight - 1 .. 1] <&> \r ->
           foldr (<+>) emptyWidget
             . M.filterWithKey (\(V2 _ y) _ -> r == y)
             $ mconcat
                 [ 
-                  emptyCellMap
+                    drawBoardPlay (ui ^. game . board)
+                ,   emptyCellMap
                 ]
 
+
+drawBoardPlay :: Board -> Map Coord (Widget Name)
+drawBoardPlay board = M.fromList
+   (map cellToInfo (M.toList board)) where
+        cellToInfo :: (Cell, Coord) -> (Coord, Widget Name)
+        cellToInfo (cell, coord) = (coord, cellToWidget cell)
+
+cellToWidget :: Cell -> Widget Name
+cellToWidget cell = withAttr (cellToAttr cell) cw where
+    cellToAttr cell = attrName (colorToNameGray (cell ^. color))
 
 playGame :: IO Game
 playGame = do
@@ -85,12 +97,9 @@ handleEvent (VtyEvent (V.EvKey V.KEsc        [])) = halt
 handleEvent _ = pure ()
 
 gameAttrMap :: AttrMap
-gameAttrMap = attrMap
-  V.defAttr
-  [ 
-    (cellAttr, testColor1 `on` testColor2)
-  ]
-
+gameAttrMap = attrMap V.defAttr 
+    [(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]]
+ 
 cellWidget :: Widget Name
 cellWidget = withAttr cellAttr $ str "Hello World"
 
@@ -103,6 +112,7 @@ testColor1 = V.RGBColor 255 0 0
 testColor2 ::V.Color
 testColor2 = V.RGBColor 0 255 0
 
+       
 emptyCellMap :: Map Coord (Widget Name)
 emptyCellMap = M.fromList
   [ (V2 x y, emptyGridCellW) | x <- [1 .. boardWidth], y <- [1 .. boardHeight] ]
