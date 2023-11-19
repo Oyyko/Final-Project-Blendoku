@@ -1,13 +1,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module GameUI 
+module GameUI
     (
         playGame
     ) where
 
 import Control.Lens (makeLenses, (^.), (<&>))
 import qualified Brick.Widgets.Center as C
-import Brick 
+import Brick
 import Brick.BChan (newBChan, writeBChan)
 import qualified Brick.Widgets.Border as B
 import qualified Brick.Widgets.Border.Style as BS
@@ -23,7 +23,7 @@ data Tick = Tick
 type Name = ()
 
 data UI = UI
-  { 
+  {
     _game    :: Game         -- ^ blendoku game
   , _paused  :: Bool         -- ^ game paused
   }
@@ -39,14 +39,31 @@ app = App
   , appAttrMap      = const gameAttrMap
   }
 
+-- drawUI :: UI -> [Widget Name]
+-- drawUI ui =
+--   [ 
+--     C.center 
+--   $ vBox 
+--     [
+--         drawBoard ui
+--     ]
+--   ]
+
+
 drawUI :: UI -> [Widget Name]
 drawUI ui =
-  [ C.center 
-  $ vBox 
     [
-        drawBoard ui
+        vBox $ replicate 2 (hBox (     
+                replicate 10 (padLeft (Pad 1) $ drawRectangleWithColor)    
+        )) 
     ]
-  ]
+
+drawRectangleWithColor :: Widget n
+drawRectangleWithColor =
+  B.border $
+  vBox [ str "     "
+       , str "     "
+       ]
 
 drawBoard :: UI -> Widget Name
 drawBoard ui =
@@ -59,7 +76,7 @@ drawBoard ui =
           foldr (<+>) emptyWidget
             . M.filterWithKey (\(V2 _ y) _ -> r == y)
             $ mconcat
-                [ 
+                [
                     drawBoardPlay (ui ^. game . board)
                 ,   emptyCellMap
                 ]
@@ -72,8 +89,8 @@ drawBoardPlay board = M.fromList
         cellToInfo (cell, coord) = (coord, cellToWidget cell)
 
 cellToWidget :: Cell -> Widget Name
-cellToWidget cell = withAttr (cellToAttr cell) cw where
-    cellToAttr cell = attrName (colorToNameGray (cell ^. color))
+cellToWidget cell = withAttr (cellToAttr cell) cw
+    where cellToAttr cell = attrName (colorToNameGray (cell ^. color))
 
 playGame :: IO Game
 playGame = do
@@ -97,14 +114,8 @@ handleEvent (VtyEvent (V.EvKey V.KEsc        [])) = halt
 handleEvent _ = pure ()
 
 gameAttrMap :: AttrMap
-gameAttrMap = attrMap V.defAttr 
+gameAttrMap = attrMap V.defAttr
     [(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]]
- 
-cellWidget :: Widget Name
-cellWidget = withAttr cellAttr $ str "Hello World"
-
-cellAttr :: AttrName
-cellAttr = attrName "cell"
 
 testColor1 ::V.Color
 testColor1 = V.RGBColor 255 0 0
@@ -112,7 +123,6 @@ testColor1 = V.RGBColor 255 0 0
 testColor2 ::V.Color
 testColor2 = V.RGBColor 0 255 0
 
-       
 emptyCellMap :: Map Coord (Widget Name)
 emptyCellMap = M.fromList
   [ (V2 x y, emptyGridCellW) | x <- [1 .. boardWidth], y <- [1 .. boardHeight] ]
