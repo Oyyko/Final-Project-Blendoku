@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Blendoku 
+module Blendoku
 (
     initGame
     , Game(..)
@@ -17,13 +17,13 @@ where
 
 import Control.Lens (makeLenses, (^.))
 import Data.Map (Map)
-import Data.Map as M
+import Data.Map as M (fromList, toList)
 import Linear.V2 (V2(..))
 import Data.String (String)
 
 type ColorVector = (Int, Int, Int) -- (R, G, B)
 data Cell = Cell
-  { 
+  {
     -- _color :: ColorVector
     _color :: Int
   , _filled :: Bool
@@ -53,19 +53,20 @@ colorToNameGray x = "gray " ++ show x
 initGame :: IO Game
 initGame = do
   pure $ Game
-    { 
+    {
         _level        = 0
-      , _board        = M.fromList [(testCell1, V2 5 5), (testCell2, V2 7 9)]
+      , _board        = generateBoard 10
     }
 
-testCell1, testCell2 :: Cell
-testCell1 = Cell
-    {
-        _color = 128
-      , _filled = False
-    }
-testCell2 = Cell
-    {
-        _color = 197
-      , _filled = False
-    }
+
+generateBoard :: Int -> Board
+generateBoard n = M.fromList $ zip 
+  (generateGradientCells 0 255 n) (generateCoords n)
+
+generateGradientCells :: Int -> Int -> Int -> [Cell]
+generateGradientCells start end n = map (`Cell` False) (generateGradient start end n)
+  where generateGradient start end n = map (\x -> x * (end `div` n)) [1..n]
+
+
+generateCoords :: Int -> [Coord]
+generateCoords n = [V2 x 9  | x <- [1..1+n]]
