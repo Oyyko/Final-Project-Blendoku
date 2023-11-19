@@ -39,58 +39,65 @@ app = App
   , appAttrMap      = const gameAttrMap
   }
 
--- drawUI :: UI -> [Widget Name]
--- drawUI ui =
---   [ 
---     C.center 
---   $ vBox 
---     [
---         drawBoard ui
---     ]
---   ]
-
-
-drawUI :: UI -> [Widget Name]
+drawUI :: UI -> [Widget n]
 drawUI ui =
     [
-        vBox $ replicate 2 (hBox (     
-                replicate 10 (padLeft (Pad 1) $ drawRectangleWithColor)    
-        )) 
+        drawCandidates ui candidateRows candidateCols
+       , drawCandidates ui candidateRows candidateCols
     ]
 
-drawRectangleWithColor :: Widget n
-drawRectangleWithColor =
-  B.border $
-  vBox [ str "     "
-       , str "     "
-       ]
+-- drawPlaygrounds :: UI -> Int -> Int -> Widget n
+-- drawPlaygrounds ui rows cols = 
+--     C.center $
+--     B.borderWithLabel (str "Playground") $
+--     vBox $ [1 .. rows] <&> \r ->
+--         foldr (<+>) emptyWidget
+--             . M.filterWithKey (\(V2 _ y) _ -> r == y)
+--             $ mconcat
+--                 [
+--                     drawBoardPlay (ui ^. game . board)
+--                    ,emptyWidgetMap rows cols
+--                 ]
 
-drawBoard :: UI -> Widget Name
-drawBoard ui =
-    withBorderStyle BS.unicodeBold
-    $ B.borderWithLabel (str "Blendoku")
-    $ if ui ^. paused then
-        C.center $ str "Paused"
-    else
-      vBox $ [boardHeight, boardHeight - 1 .. 1] <&> \r ->
-          foldr (<+>) emptyWidget
+
+drawCandidates :: UI -> Int -> Int -> Widget n
+drawCandidates ui rows cols = 
+    C.center $
+    B.borderWithLabel (str "Candidates") $
+    vBox $ [1 .. rows] <&> \r ->
+        foldr (<+>) emptyWidget
             . M.filterWithKey (\(V2 _ y) _ -> r == y)
             $ mconcat
                 [
                     drawBoardPlay (ui ^. game . board)
-                ,   emptyCellMap
+                   ,emptyWidgetMap rows cols
                 ]
 
-
-drawBoardPlay :: Board -> Map Coord (Widget Name)
+drawBoardPlay :: Board -> Map Coord (Widget n)
 drawBoardPlay board = M.fromList
    (map cellToInfo (M.toList board)) where
-        cellToInfo :: (Cell, Coord) -> (Coord, Widget Name)
+        cellToInfo :: (Cell, Coord) -> (Coord, Widget n)
         cellToInfo (cell, coord) = (coord, cellToWidget cell)
 
-cellToWidget :: Cell -> Widget Name
-cellToWidget cell = withAttr (cellToAttr cell) cw
-    where cellToAttr cell = attrName (colorToNameGray (cell ^. color))
+cellToWidget :: Cell -> Widget n
+cellToWidget cell = padLeft (Pad 1) $
+    drawRectangleWithColor (cell ^. color)
+
+emptyWidgetMap :: Int -> Int -> Map Coord (Widget n)
+emptyWidgetMap rows cols = M.fromList
+  [ (V2 c r, emptyGridW) | r <- [1 .. rows], c <- [1 .. cols] ]
+
+emptyGridW :: Widget n
+emptyGridW = padLeft (Pad 1) $ drawRectangleWithColor 255
+
+drawRectangleWithColor :: Int -> Widget n
+drawRectangleWithColor val =
+--   B.border 
+  vBox 
+  [
+    withAttr (attrName ("gray " ++ show val))  (str "     ")
+   , withAttr (attrName ("gray " ++ show val))  (str "     ")
+       ]
 
 playGame :: IO Game
 playGame = do
@@ -117,29 +124,7 @@ gameAttrMap :: AttrMap
 gameAttrMap = attrMap V.defAttr
     [(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]]
 
-testColor1 ::V.Color
-testColor1 = V.RGBColor 255 0 0
-
-testColor2 ::V.Color
-testColor2 = V.RGBColor 0 255 0
-
-emptyCellMap :: Map Coord (Widget Name)
-emptyCellMap = M.fromList
-  [ (V2 x y, emptyGridCellW) | x <- [1 .. boardWidth], y <- [1 .. boardHeight] ]
-
-emptyGridCellW :: Widget Name
-emptyGridCellW = withAttr emptyAttr cw
-
-emptyAttr :: AttrName
-emptyAttr = attrName "empty"
-
-cw :: Widget Name
-cw = str "  "
-
-boardWidth :: Int
-boardHeight ::Int
-cellSize :: Int
-boardWidth = 10
-boardHeight = 10
-cellSize = 1
+candidateRows, candidateCols :: Int
+candidateRows = 1
+candidateCols = 10
 

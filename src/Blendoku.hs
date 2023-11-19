@@ -58,7 +58,6 @@ initGame = do
       , _board        = generateBoard 10
     }
 
-
 generateBoard :: Int -> Board
 generateBoard n = M.fromList $ zip 
   (generateGradientCells 0 255 n) (generateCoords n)
@@ -67,6 +66,5 @@ generateGradientCells :: Int -> Int -> Int -> [Cell]
 generateGradientCells start end n = map (`Cell` False) (generateGradient start end n)
   where generateGradient start end n = map (\x -> x * (end `div` n)) [1..n]
 
-
 generateCoords :: Int -> [Coord]
-generateCoords n = [V2 x 9  | x <- [1..1+n]]
+generateCoords n = [V2 x 1  | x <- [1..1+n]]
