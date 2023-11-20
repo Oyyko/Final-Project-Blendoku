@@ -80,8 +80,9 @@ drawBoardPlay board = M.fromList
         cellToInfo (cell, coord) = (coord, cellToWidget cell)
 
 cellToWidget :: Cell -> Widget n
-cellToWidget cell = padLeft (Pad 1) $
-    drawRectangleWithColor (cell ^. color)
+cellToWidget cell = if cell ^. chosen 
+    then padLeft (Pad 1) $ B.border $ drawRectangleWithColor (cell ^. color)
+    else padTopBottom 1 $ padLeft (Pad 1) $  drawRectangleWithColor (cell ^. color)
 
 emptyWidgetMap :: Int -> Int -> Map Coord (Widget n)
 emptyWidgetMap rows cols = M.fromList
@@ -92,7 +93,6 @@ emptyGridW = padLeft (Pad 1) $ drawRectangleWithColor 255
 
 drawRectangleWithColor :: Int -> Widget n
 drawRectangleWithColor val =
---   B.border 
   vBox 
   [
     withAttr (attrName ("gray " ++ show val))  (str "     ")
