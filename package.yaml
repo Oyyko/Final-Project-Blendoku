@@ -26,6 +26,7 @@ dependencies:
 - vty
 - containers
 - linear
+- transformers
 
 ghc-options:
 - -Wall

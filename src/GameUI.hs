@@ -1,18 +1,21 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
 
 module GameUI
     (
         playGame
     ) where
 
-import Control.Lens (makeLenses, (^.), (<&>))
+import Control.Lens hiding (preview, op, zoom, (<|), chosen)
 import qualified Brick.Widgets.Center as C
 import Brick
 import Brick.BChan (newBChan, writeBChan)
 import qualified Brick.Widgets.Border as B
 import qualified Brick.Widgets.Border.Style as BS
 import Control.Concurrent (threadDelay, forkIO)
-import Control.Monad (void, forever)
+import Control.Monad (void, forever, when)
 import qualified Graphics.Vty as V
 import Linear.V2 (V2(..))
 import Data.Map as M (Map, filterWithKey, fromList, toList, elems)
@@ -76,13 +79,13 @@ drawCandidates ui rows cols =
 drawBoardPlay :: Board -> Map Coord (Widget n)
 drawBoardPlay board = M.fromList
    (map cellToInfo (M.toList board)) where
-        cellToInfo :: (Cell, Coord) -> (Coord, Widget n)
-        cellToInfo (cell, coord) = (coord, cellToWidget cell)
+        cellToInfo :: (Coord, Cell) -> (Coord, Widget n)
+        cellToInfo (coord, cell) = (coord, cellToWidget cell)
 
 cellToWidget :: Cell -> Widget n
 cellToWidget cell = if cell ^. chosen 
-    then padLeft (Pad 1) $ B.border $ drawRectangleWithColor (cell ^. color)
-    else padTopBottom 1 $ padLeft (Pad 1) $  drawRectangleWithColor (cell ^. color)
+    then padLeft (Pad 1) $ B.border $ drawRectangleWithColor (cell ^. color) 
+    else padTopBottom 1 $ padLeft (Pad 1) $  drawRectangleWithColor (cell ^. color) 
 
 emptyWidgetMap :: Int -> Int -> Map Coord (Widget n)
 emptyWidgetMap rows cols = M.fromList
@@ -116,6 +119,10 @@ playGame = do
   return $ ui ^. game
 
 handleEvent :: BrickEvent Name Tick -> EventM Name UI ()
+handleEvent (VtyEvent (V.EvKey V.KRight      [])) = exec (shift R)
+handleEvent (VtyEvent (V.EvKey V.KLeft       [])) = exec (shift L)
+handleEvent (VtyEvent (V.EvKey V.KDown       [])) = exec (shift D)
+handleEvent (VtyEvent (V.EvKey V.KUp         [])) = exec (shift U)
 handleEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
 handleEvent (VtyEvent (V.EvKey V.KEsc        [])) = halt
 handleEvent _ = pure ()
@@ -124,7 +131,18 @@ gameAttrMap :: AttrMap
 gameAttrMap = attrMap V.defAttr
     [(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]]
 
-candidateRows, candidateCols :: Int
-candidateRows = 1
-candidateCols = 10
 
+exec :: BlendokuGame () -> EventM Name UI ()
+exec op =
+  guarded
+    (not . \ui -> ui ^. paused)
+    (game %~ execBlendokuGame op)
+
+guarded :: (UI -> Bool) -> (UI -> UI) -> EventM Name UI ()
+guarded p f = do
+  ui <- get
+  when (p ui && not (ui ^. game . to isGameOver)) $
+    modify f
+
+isGameOver :: Game -> Bool
+isGameOver g = False

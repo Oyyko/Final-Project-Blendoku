@@ -41,6 +41,7 @@ library
     , containers
     , lens
     , linear
+    , transformers
     , vty
   default-language: Haskell2010
 
@@ -60,6 +61,7 @@ executable Blendoku-exe
     , containers
     , lens
     , linear
+    , transformers
     , vty
   default-language: Haskell2010
 
@@ -80,5 +82,6 @@ test-suite Blendoku-test
     , containers
     , lens
     , linear
+    , transformers
     , vty
   default-language: Haskell2010
