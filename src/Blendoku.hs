@@ -15,9 +15,8 @@ module Blendoku
     , level
     , board
     , color
-    , cursor
-    , chosen
-    , hover
+    , cursorPos, chosenPos
+    , chosen, hovered
     , colorToName
     , colorToNameGray
     , shift
@@ -59,7 +58,8 @@ data Game = Game
   {
     _level        :: Int
   , _board        :: Board
-  , _cursor       :: Coord
+  , _cursorPos     :: Coord
+  , _chosenPos     :: Coord
   } deriving (Eq, Show)
 
 makeLenses ''Game
@@ -75,16 +75,33 @@ execBlendokuGame m = runIdentity . execStateT m
 
 toggleSelection :: BlendokuGame ()
 toggleSelection = do
-  cursor <- gets _cursor
+  chosenPos <- gets _chosenPos
+  cursorPos <- gets _cursorPos
   board <- gets _board
-  let cell = board M.! cursor
-      cell' = cell & chosen %~ not
-      board' = M.insert cursor cell' board
-  modify $ \g -> g { _board = board' }
+  let isNotChosen = (chosenPos == V2 0 0)
+      isSamePos = (chosenPos == cursorPos)
+  if isNotChosen then do
+    let cell = board M.! cursorPos
+        cell' = cell & chosen %~ not
+        board' = M.insert cursorPos cell' board
+    modify $ \g -> g { _chosenPos = cursorPos, _board = board' }
+  else
+    if isSamePos then do
+      let cell = board M.! cursorPos
+          cell' = cell & chosen %~ not
+          board' = M.insert cursorPos cell' board
+      modify $ \g -> g { _chosenPos = V2 0 0, _board = board' }
+    else do
+      let chosenCell = board M.! chosenPos
+          chosenCell' = chosenCell & chosen %~ not
+          cell = board M.! cursorPos
+          cell' = cell & chosen %~ not
+          board' = M.insert cursorPos cell' (M.insert chosenPos chosenCell' board)
+      modify $ \g -> g { _board = board', _chosenPos = cursorPos }
 
 shift :: Direction -> BlendokuGame ()
 shift dir = do
-  cursor <- gets _cursor
+  cursor <- gets _cursorPos
   board <- gets _board
   let cell1 = board M.! cursor
       cell1' = cell1 & hovered .~ False
@@ -92,14 +109,14 @@ shift dir = do
       cell2 = board M.! cursor'
       cell2' = cell2 & hovered .~ True
       board' = M.insert cursor cell1' (M.insert cursor' cell2' board)
-  modify $ \g -> g { _board = board', _cursor = cursor' }
+  modify $ \g -> g { _board = board', _cursorPos = cursor'}
 
 updateCursor :: Coord -> Direction -> Coord
 updateCursor (V2 x y) dir = case dir of
-  L -> V2 ((x - 1 + candidateCols) `mod` candidateCols) y
-  R -> V2 ((x + 1) `mod` candidateCols) y
-  U -> V2 x ((y + 1) `mod` candidateRows)
-  D -> V2 x ((y - 1 + candidateRows) `mod` candidateRows)
+  L -> V2 (x - 1) y
+  R -> V2 (x + 1) y
+  U -> V2 x (y + 1)
+  D -> V2 x (y - 1)
 
 -- TODO: implementation for RGBcolor rather than gray
 colorToName :: ColorVector -> String
@@ -114,7 +131,9 @@ initGame = do
     {
         _level        = 0
       , _board        = modifyFirstCell (generateBoard 10)
-      , _cursor       = V2 1 1
+      , _cursorPos       = V2 1 1
+      -- V2 0, 0 means no chosen grid
+      , _chosenPos       = V2 0 0  
     }
 
 
