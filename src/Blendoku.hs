@@ -34,6 +34,8 @@ import Linear.V2 (V2(..))
 import Data.String (String)
 import Control.Monad.Trans.State (StateT(..), gets, evalStateT, execStateT, modify, execStateT)
 import Control.Applicative (Applicative(pure))
+import System.Random (Random(..), newStdGen, mkStdGen)
+import Data.List (sortOn)
 
 data Direction = L | R | U | D
   deriving (Eq, Show)
@@ -130,8 +132,10 @@ swapWithChosen = do
         cell1' = cell1 & chosen .~ False & hovered .~ True
         cell2 = board M.! cursorPos
         cell2' = cell2 & chosen .~ True & hovered .~ False
+        -- cell2' = cell2 & chosen .~ False & hovered .~ False
         board' = M.insert chosenPos cell2' (M.insert cursorPos cell1' board)
     modify $ \g -> g { _board = board'}
+    -- modify $ \g -> g { _board = board', _chosenPos = V2 0 0}
 
 -- TODO: implementation for RGBcolor rather than gray
 colorToName :: ColorVector -> String
@@ -145,16 +149,18 @@ initGame = do
   pure Game
     {
         _level        = 0
-      , _board        = modifyFirstCell (generateBoard 10)
+      , _board        = modifyFirstCell (generateBoard True 10)
       , _cursorPos       = V2 1 1
       -- V2 0, 0 means no chosen grid
       , _chosenPos       = V2 0 0  
     }
 
 
-generateBoard :: Int -> Board
-generateBoard n = M.fromList $ zip 
+generateBoard :: Bool -> Int -> Board
+generateBoard False n = M.fromList $ zip 
    (generateCoords n) (generateGradientCells 0 255 n)
+generateBoard True n = M.fromList $ zip 
+   (generateCoords n) (shuffle (generateGradientCells 0 255 n))
 
 modifyFirstCell :: Board -> Board
 modifyFirstCell board = M.insert (V2 1 1) (Cell 0 True False) board
@@ -165,6 +171,13 @@ generateGradientCells start end n = map (\x -> (x `Cell` False) False) (generate
 
 generateCoords :: Int -> [Coord]
 generateCoords n = [V2 x 1  | x <- [1..1+n]]
+
+generateShuffledCoords :: Int -> [Coord]
+generateShuffledCoords n =  shuffle [V2 x 1  | x <- [1..1+n]]
+
+shuffle :: [a] -> [a]
+shuffle xs = map snd (sortOn fst $ zip shuffle2 xs)
+  where shuffle2 = take (length xs) $ randomRs (1::Int, maxBound) (mkStdGen 42)
 
 candidateRows, candidateCols :: Int
 candidateRows = 1

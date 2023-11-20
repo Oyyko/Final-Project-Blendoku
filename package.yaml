@@ -27,6 +27,7 @@ dependencies:
 - containers
 - linear
 - transformers
+- random
 
 ghc-options:
 - -Wall
