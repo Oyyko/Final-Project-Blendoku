@@ -49,22 +49,8 @@ drawUI ui =
        , drawCandidates ui candidateRows candidateCols
     ]
 
--- drawPlaygrounds :: UI -> Int -> Int -> Widget n
--- drawPlaygrounds ui rows cols = 
---     C.center $
---     B.borderWithLabel (str "Playground") $
---     vBox $ [1 .. rows] <&> \r ->
---         foldr (<+>) emptyWidget
---             . M.filterWithKey (\(V2 _ y) _ -> r == y)
---             $ mconcat
---                 [
---                     drawBoardPlay (ui ^. game . board)
---                    ,emptyWidgetMap rows cols
---                 ]
-
-
 drawCandidates :: UI -> Int -> Int -> Widget n
-drawCandidates ui rows cols = 
+drawCandidates ui rows cols =
     C.center $
     B.borderWithLabel (str "Candidates") $
     vBox $ [1 .. rows] <&> \r ->
@@ -83,9 +69,10 @@ drawBoardPlay board = M.fromList
         cellToInfo (coord, cell) = (coord, cellToWidget cell)
 
 cellToWidget :: Cell -> Widget n
-cellToWidget cell = if cell ^. chosen 
-    then padLeft (Pad 1) $ B.border $ drawRectangleWithColor (cell ^. color) 
-    else padTopBottom 1 $ padLeft (Pad 1) $  drawRectangleWithColor (cell ^. color) 
+cellToWidget cell
+  | cell ^. chosen = padLeft (Pad 1) $ withBorderStyle BS.unicodeBold $ B.border $ drawRectangleWithColor (cell ^. color)
+  | cell ^. hovered = padLeft (Pad 1) $ B.border $ drawRectangleWithColor (cell ^. color)
+  | otherwise = padTopBottom 1 $ padLeft (Pad 1) $ drawRectangleWithColor (cell ^. color)
 
 emptyWidgetMap :: Int -> Int -> Map Coord (Widget n)
 emptyWidgetMap rows cols = M.fromList
@@ -96,7 +83,7 @@ emptyGridW = padLeft (Pad 1) $ drawRectangleWithColor 255
 
 drawRectangleWithColor :: Int -> Widget n
 drawRectangleWithColor val =
-  vBox 
+  vBox
   [
     withAttr (attrName ("gray " ++ show val))  (str "     ")
    , withAttr (attrName ("gray " ++ show val))  (str "     ")
@@ -119,6 +106,7 @@ playGame = do
   return $ ui ^. game
 
 handleEvent :: BrickEvent Name Tick -> EventM Name UI ()
+handleEvent (VtyEvent (V.EvKey (V.KChar ' ') [])) = exec (toggleSelection)
 handleEvent (VtyEvent (V.EvKey V.KRight      [])) = exec (shift R)
 handleEvent (VtyEvent (V.EvKey V.KLeft       [])) = exec (shift L)
 handleEvent (VtyEvent (V.EvKey V.KDown       [])) = exec (shift D)

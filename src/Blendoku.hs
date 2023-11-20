@@ -17,9 +17,11 @@ module Blendoku
     , color
     , cursor
     , chosen
+    , hover
     , colorToName
     , colorToNameGray
     , shift
+    , toggleSelection
     , execBlendokuGame
     , evalBlendokuGame
     , candidateRows, candidateCols
@@ -43,6 +45,7 @@ data Cell = Cell
   {
     -- _color :: ColorVector
     _color :: Int
+  , _hovered :: Bool
   , _chosen :: Bool
   } deriving (Eq, Show, Ord)
 
@@ -70,15 +73,24 @@ evalBlendokuGame m = runIdentity . evalStateT m
 execBlendokuGame :: BlendokuGame a -> Game -> Game
 execBlendokuGame m = runIdentity . execStateT m
 
+toggleSelection :: BlendokuGame ()
+toggleSelection = do
+  cursor <- gets _cursor
+  board <- gets _board
+  let cell = board M.! cursor
+      cell' = cell & chosen %~ not
+      board' = M.insert cursor cell' board
+  modify $ \g -> g { _board = board' }
+
 shift :: Direction -> BlendokuGame ()
 shift dir = do
   cursor <- gets _cursor
   board <- gets _board
   let cell1 = board M.! cursor
-      cell1' = cell1 & chosen .~ False
+      cell1' = cell1 & hovered .~ False
       cursor' = updateCursor cursor dir
       cell2 = board M.! cursor'
-      cell2' = cell2 & chosen .~ True
+      cell2' = cell2 & hovered .~ True
       board' = M.insert cursor cell1' (M.insert cursor' cell2' board)
   modify $ \g -> g { _board = board', _cursor = cursor' }
 
@@ -103,24 +115,18 @@ initGame = do
         _level        = 0
       , _board        = modifyFirstCell (generateBoard 10)
       , _cursor       = V2 1 1
-      -- ,  _board        = sampleBoard
     }
 
-
-sampleBoard :: Board
-sampleBoard = M.fromList $ zip 
-  [V2 1 1, V2 2 1, V2 3 1, V2 4 1, V2 5 1, V2 6 1, V2 7 1, V2 8 1, V2 9 1, V2 10 1]
-  [Cell 0 True, Cell 1 False, Cell 2 False, Cell 3 False, Cell 4 False, Cell 5 False, Cell 6 False, Cell 7 False, Cell 8 False, Cell 9 False] 
 
 generateBoard :: Int -> Board
 generateBoard n = M.fromList $ zip 
    (generateCoords n) (generateGradientCells 0 255 n)
 
 modifyFirstCell :: Board -> Board
-modifyFirstCell board = M.insert (V2 1 1) (Cell 0 True) board
+modifyFirstCell board = M.insert (V2 1 1) (Cell 0 True False) board
 
 generateGradientCells :: Int -> Int -> Int -> [Cell]
-generateGradientCells start end n = map (`Cell` False) (generateGradient start end n)
+generateGradientCells start end n = map (\x -> (x `Cell` False) False) (generateGradient start end n)
   where generateGradient start end n = map (\x -> x * (end `div` n)) [1..n]
 
 generateCoords :: Int -> [Coord]
