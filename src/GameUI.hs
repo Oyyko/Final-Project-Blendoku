@@ -107,6 +107,7 @@ playGame = do
 
 handleEvent :: BrickEvent Name Tick -> EventM Name UI ()
 handleEvent (VtyEvent (V.EvKey (V.KChar ' ') [])) = exec (toggleSelection)
+handleEvent (VtyEvent (V.EvKey V.KEnter      [])) = exec (swapWithChosen)
 handleEvent (VtyEvent (V.EvKey V.KRight      [])) = exec (shift R)
 handleEvent (VtyEvent (V.EvKey V.KLeft       [])) = exec (shift L)
 handleEvent (VtyEvent (V.EvKey V.KDown       [])) = exec (shift D)

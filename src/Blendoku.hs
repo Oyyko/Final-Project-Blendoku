@@ -14,13 +14,13 @@ module Blendoku
     , BlendokuGame 
     , level
     , board
-    , color
     , cursorPos, chosenPos
-    , chosen, hovered
+    , color, chosen, hovered
     , colorToName
     , colorToNameGray
     , shift
     , toggleSelection
+    , swapWithChosen
     , execBlendokuGame
     , evalBlendokuGame
     , candidateRows, candidateCols
@@ -34,7 +34,6 @@ import Linear.V2 (V2(..))
 import Data.String (String)
 import Control.Monad.Trans.State (StateT(..), gets, evalStateT, execStateT, modify, execStateT)
 import Control.Applicative (Applicative(pure))
-import Data.Bool (Bool(False))
 
 data Direction = L | R | U | D
   deriving (Eq, Show)
@@ -117,6 +116,22 @@ updateCursor (V2 x y) dir = case dir of
   R -> V2 (x + 1) y
   U -> V2 x (y + 1)
   D -> V2 x (y - 1)
+
+swapWithChosen :: BlendokuGame ()
+swapWithChosen = do
+  chosenPos <- gets _chosenPos
+  cursorPos <- gets _cursorPos
+  board <- gets _board
+  let isNotChosen = (chosenPos == V2 0 0)
+  let isSame = (chosenPos == cursorPos)
+  if isNotChosen || isSame then pure () 
+  else do
+    let cell1 = board M.! chosenPos
+        cell1' = cell1 & chosen .~ False & hovered .~ True
+        cell2 = board M.! cursorPos
+        cell2' = cell2 & chosen .~ True & hovered .~ False
+        board' = M.insert chosenPos cell2' (M.insert cursorPos cell1' board)
+    modify $ \g -> g { _board = board'}
 
 -- TODO: implementation for RGBcolor rather than gray
 colorToName :: ColorVector -> String
