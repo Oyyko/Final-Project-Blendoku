@@ -42,16 +42,17 @@ app = App
   , appAttrMap      = const gameAttrMap
   }
 
-drawUI :: UI -> [Widget n]
 drawUI ui =
-    [
+  [ C.center 
+  $ hBox
+      [ 
         drawCandidates ui candidateRows candidateCols
-       , drawCandidates ui candidateRows candidateCols
-    ]
+       ,drawHelp
+      ]
+  ]
 
 drawCandidates :: UI -> Int -> Int -> Widget n
 drawCandidates ui rows cols =
-    C.center $
     B.borderWithLabel (str "Candidates") $
     vBox $ [1 .. rows] <&> \r ->
         foldr (<+>) emptyWidget
@@ -61,6 +62,26 @@ drawCandidates ui rows cols =
                     drawBoardPlay (ui ^. game . board)
                    ,emptyWidgetMap rows cols
                 ]
+
+drawHelp :: Widget Name
+drawHelp =
+     B.borderWithLabel (str "Help")
+    $ hLimit 20
+    $ vLimit 20
+    $ padTopBottom 1
+    $ vBox
+    $ map (uncurry drawKeyInfo)
+      [ ("Left"   , "h, ←")
+      , ("Right"  , "l, →")
+      , ("Choose",  "Space")   
+      , ("Swap",   "Enter")
+      , ("Quit"   , "q")
+      ]
+
+drawKeyInfo :: String -> String -> Widget Name
+drawKeyInfo action keys =
+  padRight Max (padLeft (Pad 1) $ str action)
+    <+> padLeft Max (padRight (Pad 1) $ str keys)
 
 drawBoardPlay :: Board -> Map Coord (Widget n)
 drawBoardPlay board = M.fromList
