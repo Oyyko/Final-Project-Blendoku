@@ -13,7 +13,7 @@ module Blendoku
     , Direction(..)
     , BlendokuGame 
     , level
-    , board
+    , board, gtBoard
     , cursorPos, chosenPos
     , color, chosen, hovered
     , colorToName
@@ -59,6 +59,7 @@ data Game = Game
   {
     _level        :: Int
   , _board        :: Board
+  , _gtBoard      :: Board
   , _cursorPos     :: Coord
   , _chosenPos     :: Coord
   } deriving (Eq, Show)
@@ -150,6 +151,7 @@ initGame = do
     {
         _level        = 0
       , _board        = modifyFirstCell (generateBoard True 10)
+      , _gtBoard      = modifyFirstCell (generateBoard False 10)
       , _cursorPos       = V2 1 1
       -- V2 0, 0 means no chosen grid
       , _chosenPos       = V2 0 0  
@@ -163,7 +165,8 @@ generateBoard True n = M.fromList $ zip
    (generateCoords n) (shuffle (generateGradientCells 0 255 n))
 
 modifyFirstCell :: Board -> Board
-modifyFirstCell board = M.insert (V2 1 1) (Cell 0 True False) board
+modifyFirstCell board = M.insert (V2 1 1) (Cell (oriCell ^. color) True False) board
+  where oriCell = board M.! (V2 1 1)
 
 generateGradientCells :: Int -> Int -> Int -> [Cell]
 generateGradientCells start end n = map (\x -> (x `Cell` False) False) (generateGradient start end n)
