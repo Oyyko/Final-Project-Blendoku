@@ -69,9 +69,10 @@ drawCandidates g rows cols =
             . M.filterWithKey (\(V2 _ y) _ -> r == y)
             $ mconcat
                 [
-                    drawBoardPlay (g ^. board)
+                    drawBoardPlay (g ^. board) endOfGame
                    ,emptyWidgetMap rows cols
                 ]
+    where endOfGame = isGameEnd g
 
 drawHelp :: Widget Name
 drawHelp =
@@ -93,11 +94,11 @@ drawKeyInfo action keys =
   padRight Max (padLeft (Pad 1) $ str action)
     <+> padLeft Max (padRight (Pad 1) $ str keys)
 
-drawBoardPlay :: Board -> Map Coord (Widget n)
-drawBoardPlay board = M.fromList
+drawBoardPlay :: Board -> Bool -> Map Coord (Widget n)
+drawBoardPlay board endOfGame = M.fromList
    (map cellToInfo (M.toList board)) where
         cellToInfo :: (Coord, Cell) -> (Coord, Widget n)
-        cellToInfo (coord, cell) = (coord, cellToWidget cell)
+        cellToInfo (coord, cell) = (coord, cellToWidget cell endOfGame)
 
 drawGameState :: Game -> Widget Name
 drawGameState g = 
@@ -150,8 +151,9 @@ drawChosenGrid g = B.border $
       ]
       where cell = (g ^. board) M.! (g ^. chosenPos)
         
-cellToWidget :: Cell -> Widget n
-cellToWidget cell
+cellToWidget :: Cell -> Bool -> Widget n
+cellToWidget cell endOfGame
+  | endOfGame = drawRectangleWithColor (cell ^. color)
   | cell ^. chosen = drawRectangleWithAttr "chosen"
   | cell ^. hovered = drawRectangleWithAttr "hover"
   | otherwise = drawRectangleWithColor (cell ^. color)
