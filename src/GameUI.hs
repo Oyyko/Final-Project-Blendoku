@@ -48,7 +48,6 @@ drawUI ui =
   $ vBox
       [
         drawCandidates ui candidateRows candidateCols
-      --  ,drawHelp
         ,hBox
           [
             drawGameState (ui ^. game)
@@ -108,9 +107,9 @@ drawGameState g =
 
 cellToWidget :: Cell -> Widget n
 cellToWidget cell
-  | cell ^. chosen = padLeft (Pad 1) $ withBorderStyle BS.unicodeBold $ B.border $ drawRectangleWithColor (cell ^. color)
-  | cell ^. hovered = padLeft (Pad 1) $ B.border $ drawRectangleWithColor (cell ^. color)
-  | otherwise = padTopBottom 1 $ padLeft (Pad 1) $ drawRectangleWithColor (cell ^. color)
+  | cell ^. chosen = padLeftRight 1 $ withBorderStyle BS.unicodeBold $ B.border $ drawRectangleWithColor (cell ^. color)
+  | cell ^. hovered = padLeftRight 1 $ B.border $ drawRectangleWithColor (cell ^. color)
+  | otherwise = padTopBottom 1 $ padLeftRight 1 $ drawRectangleWithColor (cell ^. color)
 
 emptyWidgetMap :: Int -> Int -> Map Coord (Widget n)
 emptyWidgetMap rows cols = M.fromList
@@ -192,6 +191,3 @@ countEqual g = length $ filter (uncurry (==)) (zip xs ys)
     xs = f (g ^.board )
     ys = f (g ^. gtBoard)
     f b = sort (map (\(k, Cell c _ _) -> (k, c)) (M.toList b))
-
-gameOverAttr :: AttrName
-gameOverAttr = attrName "gameOver"

@@ -117,8 +117,8 @@ updateCursor :: Coord -> Direction -> Coord
 updateCursor (V2 x y) dir = case dir of
   L -> V2 (x - 1) y
   R -> V2 (x + 1) y
-  U -> V2 x (y + 1)
-  D -> V2 x (y - 1)
+  U -> V2 x (y - 1)
+  D -> V2 x (y + 1)
 
 swapWithChosen :: BlendokuGame ()
 swapWithChosen = do
@@ -150,19 +150,19 @@ initGame = do
   pure Game
     {
         _level        = 0
-      , _board        = modifyFirstCell (generateBoard True 10)
-      , _gtBoard      = modifyFirstCell (generateBoard False 10)
+      , _board        = modifyFirstCell (generateBoard True candidateRows candidateCols)
+      , _gtBoard      = modifyFirstCell (generateBoard False candidateRows candidateCols)
       , _cursorPos       = V2 1 1
       -- V2 0, 0 means no chosen grid
       , _chosenPos       = V2 0 0  
     }
 
 
-generateBoard :: Bool -> Int -> Board
-generateBoard False n = M.fromList $ zip 
-   (generateCoords n) (generateGradientCells 0 255 n)
-generateBoard True n = M.fromList $ zip 
-   (generateCoords n) (shuffle (generateGradientCells 0 255 n))
+generateBoard :: Bool -> Int -> Int -> Board
+generateBoard False row col = M.fromList $ zip 
+   (generateCoords row col) (generateGradientCells 0 255 (row * col))
+generateBoard True row col = M.fromList $ zip 
+   (generateCoords row col) (shuffle (generateGradientCells 0 255 (row * col)))
 
 modifyFirstCell :: Board -> Board
 modifyFirstCell board = M.insert (V2 1 1) (Cell (oriCell ^. color) True False) board
@@ -172,16 +172,16 @@ generateGradientCells :: Int -> Int -> Int -> [Cell]
 generateGradientCells start end n = map (\x -> (x `Cell` False) False) (generateGradient start end n)
   where generateGradient start end n = map (\x -> x * (end `div` n)) [1..n]
 
-generateCoords :: Int -> [Coord]
-generateCoords n = [V2 x 1  | x <- [1..1+n]]
+generateCoords :: Int -> Int -> [Coord]
+generateCoords row col = [V2 x y  | x <- [1..col], y <- [1..row]]
 
-generateShuffledCoords :: Int -> [Coord]
-generateShuffledCoords n =  shuffle [V2 x 1  | x <- [1..1+n]]
+generateShuffledCoords :: Int -> Int -> [Coord]
+generateShuffledCoords row col =  shuffle [V2 x y  | x <- [1..col], y <- [1..row]]
 
 shuffle :: [a] -> [a]
 shuffle xs = map snd (sortOn fst $ zip shuffle2 xs)
   where shuffle2 = take (length xs) $ randomRs (1::Int, maxBound) (mkStdGen 42)
 
 candidateRows, candidateCols :: Int
-candidateRows = 1
+candidateRows = 2
 candidateCols = 10
