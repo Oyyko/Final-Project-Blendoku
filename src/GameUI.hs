@@ -18,7 +18,7 @@ import Control.Concurrent (threadDelay, forkIO)
 import Control.Monad (void, forever, when)
 import qualified Graphics.Vty as V
 import Linear.V2 (V2(..))
-import Data.Map as M (Map, filterWithKey, fromList, toList, elems, size)
+import Data.Map as M (Map, filterWithKey, fromList, toList, elems, size, (!))
 import Data.List (sort)
 
 import Blendoku
@@ -47,24 +47,29 @@ drawUI ui =
   [ C.center
   $ vBox
       [
-        drawCandidates ui candidateRows candidateCols
-        ,hBox
-          [
-            drawGameState (ui ^. game)
-          , drawHelp
-          ]
+        drawCandidates (ui ^. game) candidateRows candidateCols
+        , drawInfo (ui ^. game)
       ]
   ]
 
-drawCandidates :: UI -> Int -> Int -> Widget n
-drawCandidates ui rows cols =
+drawInfo :: Game -> Widget Name
+drawInfo g = 
+  padLeftRight 4 $
+  hBox
+  [
+    drawGameState g
+    , drawHelp
+  ]
+
+drawCandidates :: Game -> Int -> Int -> Widget n
+drawCandidates g rows cols =
     B.borderWithLabel (str "Candidates") $
     vBox $ [1 .. rows] <&> \r ->
         foldr (<+>) emptyWidget
             . M.filterWithKey (\(V2 _ y) _ -> r == y)
             $ mconcat
                 [
-                    drawBoardPlay (ui ^. game . board)
+                    drawBoardPlay (g ^. board)
                    ,emptyWidgetMap rows cols
                 ]
 
@@ -100,16 +105,56 @@ drawGameState g =
     $ padTopBottom 1
     $ vBox
       [ 
-        padLeftRight 4 $ 
-        if isGameEnd g then str "Game End"
-        else str "Correct: " <+> str (show (countEqual g))
+        drawPointerState g
+        , padLeftRight 4 $ if isGameEnd g then str "Game End"
+            else str "Correct: " <+> str (show (countEqual g))
       ]
 
+drawPointerState :: Game -> Widget n
+drawPointerState g = 
+    padLeftRight 1
+    $ padBottom (Pad 1)
+    $ hBox
+      [ 
+        drawCursorGrid g
+        , drawChosenGrid g
+          -- str "Cursor: " <+> str (show (g ^. cursorPos))
+        -- , str "Chosen: " <+> str (show (g ^. chosenPos))
+      ]
+
+drawCursorGrid :: Game -> Widget n
+drawCursorGrid g = B.border $
+  vBox 
+  [
+      str "Cursor: " 
+    , str (show (g ^. cursorPos))
+    , padLeftRight 1 $ drawRectangleWithColor (cell ^. color)
+  ]
+  where cell = (g ^. board) M.! (g ^. cursorPos)
+
+        
+drawChosenGrid :: Game -> Widget n
+drawChosenGrid g = B.border $
+  if (g ^. chosenPos) == V2 0 0 
+      then vBox 
+      [
+        str "Chosen: "
+      , str "Empty"
+      , emptyGridW
+      ]
+      else vBox
+      [
+        str "Chosen: "
+      , str (show (g ^. chosenPos))
+      , padLeftRight 1 $ drawRectangleWithColor (cell ^. color)
+      ]
+      where cell = (g ^. board) M.! (g ^. chosenPos)
+        
 cellToWidget :: Cell -> Widget n
 cellToWidget cell
-  | cell ^. chosen = padLeftRight 1 $ withBorderStyle BS.unicodeBold $ B.border $ drawRectangleWithColor (cell ^. color)
-  | cell ^. hovered = padLeftRight 1 $ B.border $ drawRectangleWithColor (cell ^. color)
-  | otherwise = padTopBottom 1 $ padLeftRight 1 $ drawRectangleWithColor (cell ^. color)
+  | cell ^. chosen = drawRectangleWithAttr "chosen"
+  | cell ^. hovered = drawRectangleWithAttr "hover"
+  | otherwise = drawRectangleWithColor (cell ^. color)
 
 emptyWidgetMap :: Int -> Int -> Map Coord (Widget n)
 emptyWidgetMap rows cols = M.fromList
@@ -118,12 +163,20 @@ emptyWidgetMap rows cols = M.fromList
 emptyGridW :: Widget n
 emptyGridW = padLeft (Pad 1) $ drawRectangleWithColor 255
 
+drawRectangleWithAttr :: String -> Widget n
+drawRectangleWithAttr name =
+    vBox
+  [
+      withAttr (attrName name) (str "     ")
+   ,  withAttr (attrName name) (str "     ")
+       ]
+
 drawRectangleWithColor :: Int -> Widget n
 drawRectangleWithColor val =
   vBox
   [
-    withAttr (attrName ("gray " ++ show val))  (str "     ")
-   , withAttr (attrName ("gray " ++ show val))  (str "     ")
+      withAttr (attrName ("gray " ++ show val))  (str "     ")
+   ,  withAttr (attrName ("gray " ++ show val))  (str "     ")
        ]
 
 playGame :: IO Game
@@ -155,7 +208,8 @@ handleEvent _ = pure ()
 
 gameAttrMap :: AttrMap
 gameAttrMap = attrMap V.defAttr
-    [(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]]
+    ([(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]] 
+    ++ [(attrName "chosen", bg V.blue), (attrName "hover", bg V.cyan)])
 
 
 exec :: BlendokuGame () -> EventM Name UI ()
