@@ -138,7 +138,6 @@ drawCursorGrid g = B.border $
     , padLeftRight 1 $ drawRectangleWithColor (cell ^. color)
   ]
   where cell = (g ^. board) M.! (g ^. cursorPos)
-
         
 drawChosenGrid :: Game -> Widget n
 drawChosenGrid g = B.border $
@@ -169,7 +168,7 @@ emptyWidgetMap rows cols = M.fromList
   [ (V2 c r, emptyGridW) | r <- [1 .. rows], c <- [1 .. cols] ]
 
 emptyGridW :: Widget n
-emptyGridW = padLeft (Pad 1) $ drawRectangleWithColor 255
+emptyGridW = padLeft (Pad 1) $ drawRectangleWithColor (254, 254, 254)
 
 drawRectangleWithAttr :: String -> Widget n
 drawRectangleWithAttr name =
@@ -179,13 +178,13 @@ drawRectangleWithAttr name =
    ,  withAttr (attrName name) (str "     ")
        ]
 
-drawRectangleWithColor :: Int -> Widget n
-drawRectangleWithColor val =
-  vBox
+drawRectangleWithColor :: ColorVector -> Widget n
+drawRectangleWithColor color =
+    vBox
   [
-      withAttr (attrName ("gray " ++ show val))  (str "     ")
-   ,  withAttr (attrName ("gray " ++ show val))  (str "     ")
-       ]
+      withAttr (attrName (colorToNameRGB color)) (str "     ")
+   ,  withAttr (attrName (colorToNameRGB color)) (str "     ")
+  ]
 
 playGame :: IO Game
 playGame = do
@@ -216,11 +215,15 @@ handleEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
 handleEvent (VtyEvent (V.EvKey V.KEsc        [])) = halt
 handleEvent _ = pure ()
 
+--  support RGB/gray color
+-- for gray color, the color is from 0 to 255
+-- for RGB color, the color value is set to even to reduce the time to generate the color map
+-- Currently it takes about 5 seconds to generate the color map
 gameAttrMap :: AttrMap
 gameAttrMap = attrMap V.defAttr
     ([(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]] 
+    ++ [(attrName (colorToNameRGB (r, g, b)), bg (V.RGBColor (fromIntegral r) (fromIntegral g) (fromIntegral b))) | r <- [0, 2..254], g <- [0, 2..254], b <- [0, 2..254]]
     ++ [(attrName "chosen", bg V.blue), (attrName "hover", bg V.cyan), (attrName "locked", bg V.red)])
-
 
 exec :: BlendokuGame () -> EventM Name UI ()
 exec op =
@@ -240,10 +243,10 @@ guarded p f = do
 -- ignore cursor/chosen
 
 withSameState :: Board -> Board -> Bool
-withSameState board gtBoard =
-  let items = map (\(k, Cell c _ _ _) -> (k, c)) (M.toList board)
-      itemsGt = map (\(k, Cell c _ _ _) -> (k, c)) (M.toList gtBoard)
-  in sort items == sort itemsGt
+withSameState board1 board2 =
+  let items1 = map (\(k, Cell c _ _ _) -> (k, c)) (M.toList board1)
+      items2 = map (\(k, Cell c _ _ _) -> (k, c)) (M.toList board2)
+  in sort items1 == sort items2
 
 isGameEnd :: Game -> Bool
 isGameEnd g = (countEqual g) == g ^.board . to M.size

@@ -16,7 +16,7 @@ module Blendoku
     , board, gtBoard
     , cursorPos, chosenPos
     , color, chosen, hovered, locked
-    , colorToName
+    , colorToNameRGB
     , colorToNameGray
     , shift
     , toggleSelection
@@ -46,8 +46,7 @@ data Direction = L | R | U | D
 type ColorVector = (Int, Int, Int) -- (R, G, B)
 data Cell = Cell
   {
-    -- _color :: ColorVector
-    _color :: Int
+    _color :: ColorVector
   , _hovered :: Bool
   , _chosen :: Bool
   , _locked :: Bool
@@ -161,8 +160,8 @@ swapWithChosen = do
     else modify $ \g -> g { _board = board'}
 
 -- TODO: implementation for RGBcolor rather than gray
-colorToName :: ColorVector -> String
-colorToName (r, g, b) = "(" ++ show r ++ "," ++ show g ++ "," ++ show b ++ ")"
+colorToNameRGB :: ColorVector -> String
+colorToNameRGB (r, g, b) = "(" ++ show r ++ "," ++ show g ++ "," ++ show b ++ ")"
 
 colorToNameGray :: Int -> String
 colorToNameGray x = "gray " ++ show x
@@ -180,31 +179,32 @@ initGame = do
       , _hint            = False
     }
 
-
 generateBoard :: Bool -> Int -> Int -> Board
-generateBoard False row col = M.fromList $ zip
-   (generateCoords row col) (generateGradientCells 0 255 (row * col))
-generateBoard True row col = M.fromList $ zip
-   (generateCoords row col) (shuffle (generateGradientCells 0 255 (row * col)))
+generateBoard True row col = M.fromList $ zip xs ys
+   where xs = generateCoords row col
+         ys = shuffle (generateGradientCells (30, 60, 90) (150, 180, 210) (row * col) 2)
+generateBoard False row col = M.fromList $ zip xs ys
+  where xs = generateCoords row col
+        ys = generateGradientCells (30, 60, 90) (150, 180, 210) (row * col) 2
 
 modifyFirstCell :: Board -> Board
 modifyFirstCell board = M.insert (V2 1 1) (Cell (oriCell ^. color) True False False) board
   where oriCell = board M.! (V2 1 1)
 
-generateGradientCells :: Int -> Int -> Int -> [Cell]
-generateGradientCells start end n = map (\val -> Cell val False False False) (generateGradient start end n)
-  where generateGradient start end n = map (\x -> x * (end `div` n)) [1..n]
+generateGradientCells :: ColorVector -> ColorVector -> Int-> Int  -> [Cell]
+generateGradientCells (r1, g1, b1) (r2, g2, b2) n scale = 
+  map (\(r', g', b') -> Cell (r' * scale, g' * scale, b' * scale) False False False) 
+    (generateGradient (r1 `div` scale, g1 `div` scale, b1 `div` scale) (r2 `div` scale, g2 `div` scale, b2 `div` scale) n)
+  where generateGradient (r1, g1, b1) (r2, g2, b2) n = zip3 (generateGradient' r1 r2 n) (generateGradient' g1 g2 n) (generateGradient' b1 b2 n)
+        generateGradient' start end n = map (\x -> x * (end - start) `div` n + start) [1..n]
 
 generateCoords :: Int -> Int -> [Coord]
 generateCoords row col = [V2 x y  | x <- [1..col], y <- [1..row]]
-
-generateShuffledCoords :: Int -> Int -> [Coord]
-generateShuffledCoords row col =  shuffle [V2 x y  | x <- [1..col], y <- [1..row]]
 
 shuffle :: [a] -> [a]
 shuffle xs = map snd (sortOn fst $ zip shuffle2 xs)
   where shuffle2 = take (length xs) $ randomRs (1::Int, maxBound) (mkStdGen 42)
 
 candidateRows, candidateCols :: Int
-candidateRows = 5
+candidateRows = 2
 candidateCols = 10
