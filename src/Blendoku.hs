@@ -12,7 +12,7 @@ module Blendoku
     , Coord
     , Direction(..)
     , BlendokuGame
-    , level
+    , level, hint
     , board, gtBoard
     , cursorPos, chosenPos
     , color, chosen, hovered
@@ -20,6 +20,7 @@ module Blendoku
     , colorToNameGray
     , shift
     , toggleSelection
+    , toggleHint
     , swapWithChosen
     , execBlendokuGame
     , evalBlendokuGame
@@ -63,6 +64,7 @@ data Game = Game
   , _gtBoard      :: Board
   , _cursorPos     :: Coord
   , _chosenPos     :: Coord
+  , _hint          :: Bool
   } deriving (Eq, Show)
 
 makeLenses ''Game
@@ -101,6 +103,11 @@ toggleSelection = do
           cell' = cell & chosen %~ not
           board' = M.insert cursorPos cell' (M.insert chosenPos chosenCell' board)
       modify $ \g -> g { _board = board', _chosenPos = cursorPos }
+
+toggleHint :: BlendokuGame ()
+toggleHint = do
+  hint <- gets _hint
+  modify $ \g -> g { _hint = not hint }
 
 shift :: Direction -> BlendokuGame ()
 shift dir = do
@@ -154,6 +161,7 @@ initGame = do
       , _cursorPos       = V2 1 1
       -- V2 0, 0 means no chosen grid
       , _chosenPos       = V2 0 0
+      , _hint            = False
     }
 
 

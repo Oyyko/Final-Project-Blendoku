@@ -82,8 +82,11 @@ drawHelp =
     $ padTopBottom 1
     $ vBox
     $ map (uncurry drawKeyInfo)
-      [ ("Left"   , "h, ←")
-      , ("Right"  , "l, →")
+      [ ("Left"   , "←")
+      , ("Right"  , "→")
+      , ("Up"     , "↑")
+      , ("Down"   , "↓")
+      , ("Hint"   , "h")
       , ("Choose",  "Space")
       , ("Swap",   "Enter")
       , ("Quit"   , "q")
@@ -106,21 +109,18 @@ drawGameState g =
     $ padTopBottom 1
     $ vBox
       [ 
-        drawPointerState g
-        , padLeftRight 4 $ if isGameEnd g then str "Game End"
-            else str "Correct: " <+> str (show (countEqual g))
+          padLeftRight 4 $ if isGameEnd g then str "Task Completed" else str "Task In Progress"
+        , drawPointerState g
+        , padLeftRight 4 $ str ("#correct = " ++  if g ^.hint then show (countEqual g) else "??")
       ]
 
 drawPointerState :: Game -> Widget n
 drawPointerState g = 
     padLeftRight 1
-    $ padBottom (Pad 1)
     $ hBox
       [ 
-        drawCursorGrid g
+          drawCursorGrid g
         , drawChosenGrid g
-          -- str "Cursor: " <+> str (show (g ^. cursorPos))
-        -- , str "Chosen: " <+> str (show (g ^. chosenPos))
       ]
 
 drawCursorGrid :: Game -> Widget n
@@ -200,6 +200,7 @@ playGame = do
 handleEvent :: BrickEvent Name Tick -> EventM Name UI ()
 handleEvent (VtyEvent (V.EvKey (V.KChar ' ') [])) = exec (toggleSelection)
 handleEvent (VtyEvent (V.EvKey V.KEnter      [])) = exec (swapWithChosen)
+handleEvent (VtyEvent (V.EvKey (V.KChar 'h') [])) = exec (toggleHint)
 handleEvent (VtyEvent (V.EvKey V.KRight      [])) = exec (shift R)
 handleEvent (VtyEvent (V.EvKey V.KLeft       [])) = exec (shift L)
 handleEvent (VtyEvent (V.EvKey V.KDown       [])) = exec (shift D)
