@@ -15,12 +15,13 @@ module Blendoku
     , level, hint
     , board, gtBoard
     , cursorPos, chosenPos
-    , color, chosen, hovered
+    , color, chosen, hovered, locked
     , colorToName
     , colorToNameGray
     , shift
     , toggleSelection
     , toggleHint
+    , toggleLock
     , swapWithChosen
     , execBlendokuGame
     , evalBlendokuGame
@@ -49,6 +50,7 @@ data Cell = Cell
     _color :: Int
   , _hovered :: Bool
   , _chosen :: Bool
+  , _locked :: Bool
   } deriving (Eq, Show, Ord)
 
 makeLenses ''Cell
@@ -89,25 +91,38 @@ toggleSelection = do
     let cell = board M.! cursorPos
         cell' = cell & chosen %~ not
         board' = M.insert cursorPos cell' board
-    modify $ \g -> g { _chosenPos = cursorPos, _board = board' }
+    -- awkward, always need to check locked before modification
+    if cell ^. locked then pure ()
+    else modify $ \g -> g { _chosenPos = cursorPos, _board = board' }
   else
     if isSamePos then do
       let cell = board M.! cursorPos
           cell' = cell & chosen %~ not
           board' = M.insert cursorPos cell' board
-      modify $ \g -> g { _chosenPos = V2 0 0, _board = board' }
+      if cell ^. locked then pure ()
+      else modify $ \g -> g { _chosenPos = V2 0 0, _board = board' }
     else do
       let chosenCell = board M.! chosenPos
           chosenCell' = chosenCell & chosen %~ not
           cell = board M.! cursorPos
           cell' = cell & chosen %~ not
           board' = M.insert cursorPos cell' (M.insert chosenPos chosenCell' board)
-      modify $ \g -> g { _board = board', _chosenPos = cursorPos }
+      if cell ^. locked then pure ()
+      else modify $ \g -> g { _board = board', _chosenPos = cursorPos }
 
 toggleHint :: BlendokuGame ()
 toggleHint = do
   hint <- gets _hint
   modify $ \g -> g { _hint = not hint }
+
+toggleLock :: BlendokuGame ()
+toggleLock = do
+  cursorPos <- gets _cursorPos
+  board <- gets _board
+  let cell = board M.! cursorPos
+      cell' = cell & locked %~ not
+      board' = M.insert cursorPos cell' board
+  modify $ \g -> g { _board = board' }
 
 shift :: Direction -> BlendokuGame ()
 shift dir = do
@@ -142,7 +157,8 @@ swapWithChosen = do
         cell2 = board M.! cursorPos
         cell2' = cell2 & chosen .~ True & hovered .~ False
         board' = M.insert chosenPos cell2' (M.insert cursorPos cell1' board)
-    modify $ \g -> g { _board = board'}
+    if cell1 ^. locked || cell2 ^. locked then pure ()
+    else modify $ \g -> g { _board = board'}
 
 -- TODO: implementation for RGBcolor rather than gray
 colorToName :: ColorVector -> String
@@ -172,11 +188,11 @@ generateBoard True row col = M.fromList $ zip
    (generateCoords row col) (shuffle (generateGradientCells 0 255 (row * col)))
 
 modifyFirstCell :: Board -> Board
-modifyFirstCell board = M.insert (V2 1 1) (Cell (oriCell ^. color) True False) board
+modifyFirstCell board = M.insert (V2 1 1) (Cell (oriCell ^. color) True False False) board
   where oriCell = board M.! (V2 1 1)
 
 generateGradientCells :: Int -> Int -> Int -> [Cell]
-generateGradientCells start end n = map (\x -> (x `Cell` False) False) (generateGradient start end n)
+generateGradientCells start end n = map (\val -> Cell val False False False) (generateGradient start end n)
   where generateGradient start end n = map (\x -> x * (end `div` n)) [1..n]
 
 generateCoords :: Int -> Int -> [Coord]
@@ -190,5 +206,5 @@ shuffle xs = map snd (sortOn fst $ zip shuffle2 xs)
   where shuffle2 = take (length xs) $ randomRs (1::Int, maxBound) (mkStdGen 42)
 
 candidateRows, candidateCols :: Int
-candidateRows = 2
+candidateRows = 5
 candidateCols = 10

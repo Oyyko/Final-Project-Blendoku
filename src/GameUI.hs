@@ -87,6 +87,7 @@ drawHelp =
       , ("Up"     , "↑")
       , ("Down"   , "↓")
       , ("Hint"   , "h")
+      , ("Lock"   , "l")
       , ("Choose",  "Space")
       , ("Swap",   "Enter")
       , ("Quit"   , "q")
@@ -117,11 +118,16 @@ drawGameState g =
 drawPointerState :: Game -> Widget n
 drawPointerState g = 
     padLeftRight 1
-    $ hBox
-      [ 
-          drawCursorGrid g
-        , drawChosenGrid g
-      ]
+    $ vBox
+    [
+        hBox
+        [ 
+            drawCursorGrid g
+          , drawChosenGrid g
+        ]
+      , padLeftRight 4 $ str "Locked: " <+> str (show (cell ^. locked))
+    ]
+    where cell = (g ^. board) M.! (g ^. cursorPos)
 
 drawCursorGrid :: Game -> Widget n
 drawCursorGrid g = B.border $
@@ -201,6 +207,7 @@ handleEvent :: BrickEvent Name Tick -> EventM Name UI ()
 handleEvent (VtyEvent (V.EvKey (V.KChar ' ') [])) = exec (toggleSelection)
 handleEvent (VtyEvent (V.EvKey V.KEnter      [])) = exec (swapWithChosen)
 handleEvent (VtyEvent (V.EvKey (V.KChar 'h') [])) = exec (toggleHint)
+handleEvent (VtyEvent (V.EvKey (V.KChar 'l') [])) = exec (toggleLock)
 handleEvent (VtyEvent (V.EvKey V.KRight      [])) = exec (shift R)
 handleEvent (VtyEvent (V.EvKey V.KLeft       [])) = exec (shift L)
 handleEvent (VtyEvent (V.EvKey V.KDown       [])) = exec (shift D)
@@ -212,7 +219,7 @@ handleEvent _ = pure ()
 gameAttrMap :: AttrMap
 gameAttrMap = attrMap V.defAttr
     ([(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]] 
-    ++ [(attrName "chosen", bg V.blue), (attrName "hover", bg V.cyan)])
+    ++ [(attrName "chosen", bg V.blue), (attrName "hover", bg V.cyan), (attrName "locked", bg V.red)])
 
 
 exec :: BlendokuGame () -> EventM Name UI ()
@@ -232,11 +239,10 @@ guarded p f = do
 -- to be more accurate, check whether the cell in the same position has the same color
 -- ignore cursor/chosen
 
-
 withSameState :: Board -> Board -> Bool
 withSameState board gtBoard =
-  let items = map (\(k, Cell c _ _) -> (k, c)) (M.toList board)
-      itemsGt = map (\(k, Cell c _ _) -> (k, c)) (M.toList gtBoard)
+  let items = map (\(k, Cell c _ _ _) -> (k, c)) (M.toList board)
+      itemsGt = map (\(k, Cell c _ _ _) -> (k, c)) (M.toList gtBoard)
   in sort items == sort itemsGt
 
 isGameEnd :: Game -> Bool
@@ -247,4 +253,4 @@ countEqual g = length $ filter (uncurry (==)) (zip xs ys)
   where 
     xs = f (g ^.board )
     ys = f (g ^. gtBoard)
-    f b = sort (map (\(k, Cell c _ _) -> (k, c)) (M.toList b))
+    f b = sort (map (\(k, Cell c _ _ _) -> (k, c)) (M.toList b))
