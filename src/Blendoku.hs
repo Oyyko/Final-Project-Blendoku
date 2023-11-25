@@ -29,7 +29,7 @@ module Blendoku
 )
 where
 
-import Control.Lens hiding (preview, op, zoom, (<|), chosen)
+import Control.Lens hiding (preview, op, zoom, (<|), chosen, elements)
 import Data.Map (Map)
 import Data.Map as M (fromList, toList, (!), insert, member)
 import Linear.V2 (V2(..))
@@ -39,6 +39,7 @@ import Control.Applicative (Applicative(pure))
 import Control.Monad (when)
 import System.Random (Random(..), newStdGen, mkStdGen)
 import Data.List (sortOn)
+import Test.QuickCheck (choose, elements, generate, Gen)
 
 data Direction = L | R | U | D
   deriving (Eq, Show)
@@ -58,6 +59,7 @@ type Board = Map Coord Cell
 
 type Coord = V2 Int
 
+type ColorWord = [(Coord, Cell)]
 data Game = Game
   {
     _level        :: Int
@@ -159,7 +161,6 @@ swapWithChosen = do
     if cell1 ^. locked || cell2 ^. locked then pure ()
     else modify $ \g -> g { _board = board'}
 
--- TODO: implementation for RGBcolor rather than gray
 colorToNameRGB :: ColorVector -> String
 colorToNameRGB (r, g, b) = "(" ++ show r ++ "," ++ show g ++ "," ++ show b ++ ")"
 
@@ -168,35 +169,72 @@ colorToNameGray x = "gray " ++ show x
 
 initGame :: IO Game
 initGame = do
-  pure Game
+  emptyBoard <- generateEmptyBoard candidateRows candidateCols
+  updatedBoard <- updateBoard emptyBoard (V2 1 1)
+  return  Game
     {
         _level        = 0
-      , _board        = modifyFirstCell (generateBoard True candidateRows candidateCols)
-      , _gtBoard      = modifyFirstCell (generateBoard False candidateRows candidateCols)
+      , _board          = updatedBoard
+      , _gtBoard        = emptyBoard
       , _cursorPos       = V2 1 1
       -- V2 0, 0 means no chosen grid
       , _chosenPos       = V2 0 0
       , _hint            = False
     }
 
-generateBoard :: Bool -> Int -> Int -> Board
-generateBoard True row col = M.fromList $ zip xs ys
-   where xs = generateCoords row col
-         ys = shuffle (generateGradientCells (30, 60, 90) (150, 180, 210) (row * col) 2)
-generateBoard False row col = M.fromList $ zip xs ys
+generateEmptyBoard :: Int -> Int -> IO Board
+generateEmptyBoard row col = return (M.fromList $ zip xs ys)
   where xs = generateCoords row col
-        ys = generateGradientCells (30, 60, 90) (150, 180, 210) (row * col) 2
+        ys = replicate (row * col) (Cell (0, 0, 0) False False False)
+
+updateBoard :: Board -> Coord -> IO Board
+updateBoard board coord = do
+  word' <- generateNextColorWord board coord
+  if validateWord word' board
+    then return (insertColorWord word' board)
+    else updateBoard board coord
+
+generateNextColorWord :: Board -> Coord -> IO ColorWord
+generateNextColorWord board coord = do
+  n <- generate (choose (3::Int, 5))
+  dir <- generate (elements [L, R, U, D])
+  c1 <- generate (elements keyColorList)
+  c2 <- generate (elements keyColorList)
+  xs <- generateGraidentCoords coord n dir
+  ys <- generateGradientCells c1 c2 n 4
+  return (zip xs ys)
+
+generateGraidentCoords :: Coord -> Int -> Direction -> IO [Coord]
+generateGraidentCoords coord n dir = do
+  let (V2 x y) = coord
+  case dir of
+    L -> return [V2 x' y | x' <- [x - n .. x]]
+    R -> return [V2 x' y | x' <- [x .. x + n]]
+    U -> return [V2 x y' | y' <- [y - n .. y]]
+    D -> return [V2 x y' | y' <- [y .. y + n]]
+
+generateGradientCells :: ColorVector -> ColorVector -> Int-> Int  -> IO [Cell]
+generateGradientCells (r1, g1, b1) (r2, g2, b2) n scale = do
+  return (map (\(r', g', b') -> Cell (r' * scale, g' * scale, b' * scale) False False False) 
+    (generateGradient (r1 `div` scale, g1 `div` scale, b1 `div` scale) (r2 `div` scale, g2 `div` scale, b2 `div` scale) n))
+  where 
+        generateGradient (r1, g1, b1) (r2, g2, b2) n = zip3 (generateGradient' r1 r2 n) (generateGradient' g1 g2 n) (generateGradient' b1 b2 n)
+        generateGradient' start end n = map (\x -> x * (end - start) `div` n + start) [1..n]
+
+validateWord :: ColorWord -> Board -> Bool
+validateWord word board = 
+  all (\(k, v) -> validateSingle k v board) word
+  where validateSingle :: Coord -> Cell -> Board -> Bool
+        validateSingle coord cell board = 
+          M.member coord board && 
+          ((board M.! coord ^. color == cell ^. color) || (board M.! coord ^. color == (0, 0, 0)))
+
+insertColorWord :: ColorWord -> Board -> Board
+insertColorWord word board = foldl (\b (k, v) -> M.insert k v b) board word
 
 modifyFirstCell :: Board -> Board
 modifyFirstCell board = M.insert (V2 1 1) (Cell (oriCell ^. color) True False False) board
   where oriCell = board M.! (V2 1 1)
-
-generateGradientCells :: ColorVector -> ColorVector -> Int-> Int  -> [Cell]
-generateGradientCells (r1, g1, b1) (r2, g2, b2) n scale = 
-  map (\(r', g', b') -> Cell (r' * scale, g' * scale, b' * scale) False False False) 
-    (generateGradient (r1 `div` scale, g1 `div` scale, b1 `div` scale) (r2 `div` scale, g2 `div` scale, b2 `div` scale) n)
-  where generateGradient (r1, g1, b1) (r2, g2, b2) n = zip3 (generateGradient' r1 r2 n) (generateGradient' g1 g2 n) (generateGradient' b1 b2 n)
-        generateGradient' start end n = map (\x -> x * (end - start) `div` n + start) [1..n]
 
 generateCoords :: Int -> Int -> [Coord]
 generateCoords row col = [V2 x y  | x <- [1..col], y <- [1..row]]
@@ -206,5 +244,8 @@ shuffle xs = map snd (sortOn fst $ zip shuffle2 xs)
   where shuffle2 = take (length xs) $ randomRs (1::Int, maxBound) (mkStdGen 42)
 
 candidateRows, candidateCols :: Int
-candidateRows = 2
-candidateCols = 10
+candidateRows = 8
+candidateCols = 8
+
+keyColorList :: [ColorVector]
+keyColorList = shuffle [ (r, g, b) | r <- [0, 32..255], g <- [0, 32..255], b <- [0, 32..255]]

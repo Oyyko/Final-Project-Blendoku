@@ -222,7 +222,7 @@ handleEvent _ = pure ()
 gameAttrMap :: AttrMap
 gameAttrMap = attrMap V.defAttr
     ([(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]] 
-    ++ [(attrName (colorToNameRGB (r, g, b)), bg (V.RGBColor (fromIntegral r) (fromIntegral g) (fromIntegral b))) | r <- [0, 2..254], g <- [0, 2..254], b <- [0, 2..254]]
+    ++ [(attrName (colorToNameRGB (r, g, b)), bg (V.RGBColor (fromIntegral r) (fromIntegral g) (fromIntegral b))) | r <- [0, 4..255], g <- [0, 4..255], b <- [0, 4..255]]
     ++ [(attrName "chosen", bg V.blue), (attrName "hover", bg V.cyan), (attrName "locked", bg V.red)])
 
 exec :: BlendokuGame () -> EventM Name UI ()
