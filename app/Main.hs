@@ -2,8 +2,10 @@ module Main (main) where
 
 import Lib
 import GameUI (playGame)
+import PickGameType (pickGameType)
 
 main :: IO ()
 main = do
-    playGame
+    gameType <- pickGameType
+    playGame gameType
     pure ()

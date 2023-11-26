@@ -198,14 +198,14 @@ drawRectangleWithColor color =
    ,  withAttr (attrName (colorToNameRGB color)) (str "     ")
   ]
 
-playGame :: IO Game
-playGame = do
+playGame :: Int -> IO Game
+playGame gameType = do
   let delay = 100000
   chan <- newBChan 10
   void . forkIO $ forever $ do
     writeBChan chan Tick
     threadDelay delay
-  initialGame <- initGame
+  initialGame <- initGame gameType
   let builder = V.mkVty V.defaultConfig
   initialVty <- builder
   ui <- customMain initialVty builder (Just chan) app $ UI

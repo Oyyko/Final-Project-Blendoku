@@ -174,9 +174,12 @@ colorToNameRGB (r, g, b) = "(" ++ show r ++ "," ++ show g ++ "," ++ show b ++ ")
 colorToNameGray :: Int -> String
 colorToNameGray x = "gray " ++ show x
 
-initGame :: IO Game
-initGame = do
-  let gameType = TShape
+initGame :: Int -> IO Game
+initGame val = do
+  gameType <- case val of
+    0 -> return Line
+    1 -> return Rectangle
+    2 -> return TShape
   (rows, cols, board, gtBoard) <- case gameType of
     Line -> initLineBoard
     Rectangle -> initRectangleBoard

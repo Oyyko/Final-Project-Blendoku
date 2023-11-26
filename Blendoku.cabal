@@ -28,6 +28,7 @@ library
       Blendoku
       GameUI
       Lib
+      PickGameType
   other-modules:
       Paths_Blendoku
   autogen-modules:
