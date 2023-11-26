@@ -36,6 +36,7 @@ ui =
         , str "  1: Rectangle"
         , str "  2: TShape"
         , str "  3: HShape"
+        , str "  4: Random"
         ]
 
 handleEvent :: BrickEvent () e -> EventM () (Maybe Int) ()
@@ -43,7 +44,7 @@ handleEvent (VtyEvent (V.EvKey V.KEsc        _)) = halt
 handleEvent (VtyEvent (V.EvKey (V.KChar 'q') _)) = halt
 handleEvent (VtyEvent (V.EvKey (V.KChar 'Q') _)) = halt
 handleEvent (VtyEvent (V.EvKey (V.KChar d) [])) =
-  when (d `elem` ['0' .. '3']) $ do
+  when (d `elem` ['0' .. '4']) $ do
     put $ Just $ read [d]
     halt
 handleEvent _ = pure ()
