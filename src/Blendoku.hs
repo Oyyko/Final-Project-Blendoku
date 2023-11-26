@@ -311,8 +311,9 @@ shuffle :: [a] -> [a]
 shuffle xs = map snd (sortOn fst $ zip shuffle2 xs)
   where shuffle2 = take (length xs) $ randomRs (1::Int, maxBound) (mkStdGen 42)
 
+--  remove first element (black) because it is a special color that represents "wall"
 keyColorList :: [ColorVector]
-keyColorList = shuffle [ (r, g, b) | r <- [0, 32..255], g <- [0, 32..255], b <- [0, 32..255]]
+keyColorList = shuffle (tail [ (r, g, b) | r <- [0, 32..255], g <- [0, 32..255], b <- [0, 32..255]])
 
 
 -- validateWord :: ColorWord -> Board -> Bool
