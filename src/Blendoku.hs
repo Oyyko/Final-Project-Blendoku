@@ -45,7 +45,7 @@ import Data.IntMap (insert)
 data Direction = L | R | U | D
   deriving (Eq, Show)
 
-data MazeType = Line | Rectangle
+data MazeType = Line | Rectangle | TShape
   deriving (Eq, Show, Enum)
 
 type ColorVector = (Int, Int, Int) -- (R, G, B)
@@ -175,10 +175,11 @@ colorToNameGray x = "gray " ++ show x
 
 initGame :: IO Game
 initGame = do
-  let gameType = Rectangle
+  let gameType = TShape
   (rows, cols, board, gtBoard) <- case gameType of
     Line -> initLineBoard
     Rectangle -> initRectangleBoard
+    TShape -> initTShapeBoard
   return  Game
     {
         _level        = 0
@@ -239,6 +240,28 @@ initRectangleBoard = do
   let board = addCursor (shuffleBoard gtBoard)
   return (rows, cols, board, gtBoard)
 
+initTShapeBoard :: IO (Int, Int, Board, Board)
+initTShapeBoard = do
+  let rows = 5
+      cols = 10
+      emptyBoard = generateEmptyBoard rows cols
+  c1 <- generate (elements keyColorList)
+  c2 <- generate (elements keyColorList)
+  xs <- generateGraidentCoords (V2 1 1) cols R
+  ys <- generateGradientCells c1 c2 cols 4
+  let word12 = zip xs ys
+  gtBoard <- return (insertColorWord word12 emptyBoard)
+  c3 <- generate (elements keyColorList)
+  let coordMid = V2 (cols `div` 2) 1
+      cMid = gtBoard M.! coordMid ^. color
+  xs <- generateGraidentCoords coordMid rows D
+  ys <- generateGradientCells cMid c3 rows 4
+  let wordMid3 = zip xs ys
+  gtBoard <- return (insertColorWord wordMid3 gtBoard)
+  let lockedList =  [V2 1 1, V2 cols 1, V2 (cols `div` 2) rows]
+  gtBoard <- return (foldr (M.adjust (\cell -> cell & locked .~ True)) gtBoard lockedList)
+  let board = addCursor (shuffleBoard gtBoard)
+  return (rows, cols, gtBoard, gtBoard)
 
 shuffleBoard :: Board -> Board
 shuffleBoard board = foldr M.union M.empty [shuffledRemain, lockedItems, blackItems]
