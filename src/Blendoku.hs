@@ -210,18 +210,17 @@ initLineBoard = do
       cell1' = cell1 & locked .~ True
       cell2' = cell2 & locked .~ True
   gtBoard <- return (M.insert (V2 idx1 1) cell1' (M.insert (V2 idx2 1) cell2' gtBoard))
-  board <- shuffleBoard gtBoard
+  board <- return (addCursor (shuffleBoard  gtBoard))
   return (rows, cols, board, gtBoard)
 
-shuffleBoard :: Board -> IO Board
-shuffleBoard board = do
-  let lockedItems = M.filter (\cell -> cell ^. locked) board
-      blackItems = M.filter (\cell -> cell ^. color == (0, 0, 0)) board
-      remainItems = M.filter (\cell -> not (cell ^. locked) && cell ^. color /= (0, 0, 0)) board
-      (xs, ys) = unzip (M.toList remainItems)
-      shuffledRemain = M.fromList (zip xs (shuffle ys))
-      shuffledBoard = foldr M.union M.empty [shuffledRemain, lockedItems, blackItems]
-  return shuffledBoard
+shuffleBoard :: Board -> Board
+shuffleBoard board = foldr M.union M.empty [shuffledRemain, lockedItems, blackItems]
+  where
+    lockedItems = M.filter (\cell -> cell ^. locked) board
+    blackItems = M.filter (\cell -> cell ^. color == (0, 0, 0)) board
+    remainItems = M.filter (\cell -> not (cell ^. locked) && cell ^. color /= (0, 0, 0)) board
+    (xs, ys) = unzip (M.toList remainItems)
+    shuffledRemain = M.fromList (zip xs (shuffle ys))
 
 generateEmptyBoard :: Int -> Int -> Board
 generateEmptyBoard row col = M.fromList $ zip xs ys
@@ -244,7 +243,6 @@ updateBoard board coord = do
   if validateWord word' board
     then return (insertColorWord word' board)
     else updateBoard board coord
-
 
 generateNextColorWord :: Board -> Coord -> IO ColorWord
 generateNextColorWord board coord = do
