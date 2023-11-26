@@ -54,7 +54,7 @@ drawUI ui =
 
 drawInfo :: Game -> Widget Name
 drawInfo g =
-  
+  hLimit 50 $ 
   hBox
   [
     drawGameState g
@@ -106,13 +106,14 @@ drawBoardPlay board endOfGame = M.fromList
 
 drawGameState :: Game -> Widget Name
 drawGameState g =
-    B.borderWithLabel (str "Game State")
+    let title = if isGameEnd g then "Game Completed" else "Game In Progress" in
+    B.borderWithLabel (str title)
+    $ hLimit 25
     $ padTopBottom 1
     $ vBox
       [
-          padLeftRight 4 $ if isGameEnd g then str "Task Completed" else str "Task In Progress"
-        , drawPointerState g
-        , padLeftRight 4 $ str ("#correct = " ++  if g ^.hint then show (countEqual g) else "??")
+         drawPointerState g
+        , if g ^.hint then drawHint g else emptyWidget 
       ]
 
 drawPointerState :: Game -> Widget n
@@ -125,36 +126,48 @@ drawPointerState g =
             drawCursorGrid g
           , drawChosenGrid g
         ]
-      , padLeftRight 4 $ str "Locked: " <+> str (show (cell ^. locked))
     ]
     where cell = (g ^. board) M.! (g ^. cursorPos)
 
 drawCursorGrid :: Game -> Widget n
-drawCursorGrid g = B.border $
+drawCursorGrid g = 
+  padLeftRight 2 $ 
   vBox
   [
-      str "Cursor: "
-    , str (show (g ^. cursorPos))
-    , padLeftRight 1 $ drawRectangleWithColor (cell ^. color)
+      str (show (g ^. cursorPos))
+    , drawRectangleWithColor (cell ^. color)
+    , str "Cursor"
+    , if cell ^. locked then str "locked" else str "free"
   ]
   where cell = (g ^. board) M.! (g ^. cursorPos)
 
 drawChosenGrid :: Game -> Widget n
-drawChosenGrid g = B.border $
+drawChosenGrid g = 
+  padLeftRight 2 $
   if (g ^. chosenPos) == V2 0 0
       then vBox
       [
-        str "Chosen: "
-      , str "Empty"
+        str "Empty"
       , emptyGridW
+      , str "Chosen"
       ]
       else vBox
       [
-        str "Chosen: "
-      , str (show (g ^. chosenPos))
-      , padLeftRight 1 $ drawRectangleWithColor (cell ^. color)
+        str (show (g ^. chosenPos))
+      , drawRectangleWithColor (cell ^. color)
+      , str "Chosen"
       ]
       where cell = (g ^. board) M.! (g ^. chosenPos)
+
+
+drawHint :: Game -> Widget n
+drawHint g = 
+  B.borderWithLabel (str "Hint") $ 
+  vBox
+  [
+      str "correct / changeable"
+    , str "Progress: " <+> str (show (countCorrectChangeable g)) <+> str "/" <+> str (show (countChangeable g))
+  ]
 
 cellToWidget :: Cell -> Bool -> Widget n
 cellToWidget cell endOfGame
@@ -250,6 +263,18 @@ withSameState board1 board2 =
 
 isGameEnd :: Game -> Bool
 isGameEnd g = (countEqual g) == g ^.board . to M.size
+
+countLocked :: Game -> Int
+countLocked g = length $ filter (\(_, Cell _ _ _ l) -> l) (M.toList (g ^. board))
+
+countBlack :: Game -> Int
+countBlack g = length $ filter (\(_, Cell c _ _ _) -> c == (0, 0, 0)) (M.toList (g ^. board))
+
+countChangeable :: Game -> Int
+countChangeable g = g ^.board . to M.size - countLocked g - countBlack g
+
+countCorrectChangeable :: Game -> Int
+countCorrectChangeable g = countEqual g - countLocked g - countBlack g
 
 countEqual :: Game -> Int
 countEqual g = length $ filter (uncurry (==)) (zip xs ys)
