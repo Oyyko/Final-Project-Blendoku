@@ -45,7 +45,7 @@ import Data.IntMap (insert)
 data Direction = L | R | U | D
   deriving (Eq, Show)
 
-data MazeType = Line | Rectangle | TShape
+data MazeType = Line | Rectangle | TShape | HShape
   deriving (Eq, Show, Enum)
 
 type ColorVector = (Int, Int, Int) -- (R, G, B)
@@ -180,10 +180,12 @@ initGame val = do
     0 -> return Line
     1 -> return Rectangle
     2 -> return TShape
+    3 -> return HShape
   (rows, cols, board, gtBoard) <- case gameType of
     Line -> initLineBoard
     Rectangle -> initRectangleBoard
     TShape -> initTShapeBoard
+    HShape -> initHShapeBoard
   return  Game
     {
         _level        = 0
@@ -266,6 +268,37 @@ initTShapeBoard = do
   gtBoard <- return (foldr (M.adjust (\cell -> cell & locked .~ True)) gtBoard lockedList)
   let board = addCursor (shuffleBoard gtBoard)
   return (rows, cols, board, gtBoard)
+
+initHShapeBoard :: IO (Int, Int, Board, Board)
+initHShapeBoard = do 
+  let rows = 7
+      cols = 9
+      emptyBoard = generateEmptyBoard rows cols
+  c1 <- generate (elements keyColorList)
+  c2 <- generate (elements keyColorList)
+  let xs = computeGradientCoords (V2 1 1) rows D
+      ys = computeGradientCells c1 c2 rows 4
+      word12 = zip xs ys
+  gtBoard <- return (insertColorWord word12 emptyBoard)
+  c3 <- generate (elements keyColorList)
+  c4 <- generate (elements keyColorList)
+  let xs = computeGradientCoords (V2 cols 1) rows D
+      ys = computeGradientCells c3 c4 rows 4
+      word34 = zip xs ys
+  gtBoard <- return (insertColorWord word34 gtBoard)
+  let coordMid12 = V2 1 ((1 + rows) `div` 2)
+      coordMid34 = V2 cols ((1 + rows) `div` 2)
+      cMid12 = gtBoard M.! coordMid12 ^. color
+      cMid34 = gtBoard M.! coordMid34 ^. color
+      xs = computeGradientCoords coordMid12 cols R
+      ys = computeGradientCells cMid12 cMid34 cols 4
+      wordMid = zip xs ys 
+  gtBoard <- return (insertColorWord wordMid gtBoard)
+  let lockedList = [V2 1 1, V2 cols 1, V2 1 rows, V2 cols rows]
+  gtBoard <- return (foldr (M.adjust (\cell -> cell & locked .~ True)) gtBoard lockedList)
+  let board = addCursor (shuffleBoard gtBoard)
+  return (rows, cols, board, gtBoard)
+  
 
 shuffleBoard :: Board -> Board
 shuffleBoard board = foldr M.union M.empty [shuffledRemain, lockedItems, blackItems]
