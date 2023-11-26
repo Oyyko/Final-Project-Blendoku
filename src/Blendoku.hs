@@ -194,18 +194,17 @@ initGame = do
 initLineBoard :: IO (Int, Int, Board, Board)
 initLineBoard = do
   let rows = 1
-      cols = 8
+      cols = 9
       emptyBoard = generateEmptyBoard rows cols
       coord = V2 1 1
       dir = R
-      n = 8
   c1 <- generate (elements keyColorList)
   c2 <- generate (elements keyColorList)
-  xs <- generateGraidentCoords coord n dir
-  ys <- generateGradientCells c1 c2 n 4
+  xs <- generateGraidentCoords coord cols dir
+  ys <- generateGradientCells c1 c2 cols 4
   let gtBoard = insertColorWord (zip xs ys) emptyBoard
-  idx1 <- generate (choose (1::Int, 8))
-  idx2 <- generate (choose (1::Int, 8))
+  idx1 <- generate (choose (1::Int, cols))
+  idx2 <- generate (choose (1::Int, cols))
   let cell1 = gtBoard M.! (V2 idx1 1)
       cell2 = gtBoard M.! (V2 idx2 1)
       cell1' = cell1 & locked .~ True

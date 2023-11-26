@@ -47,14 +47,14 @@ drawUI ui =
   [ C.center
   $ vBox
       [
-        drawCandidates (ui ^. game) (ui ^. (game . boardRows) ) (ui ^. (game . boardCols) )
-        , drawInfo (ui ^. game)
+        padLeftRight 4 $ drawCandidates (ui ^. game) (ui ^. (game . boardRows) ) (ui ^. (game . boardCols) )
+        , padLeftRight 4 $ drawInfo (ui ^. game)
       ]
   ]
 
 drawInfo :: Game -> Widget Name
 drawInfo g =
-  padLeftRight 4 $
+  
   hBox
   [
     drawGameState g
