@@ -61,6 +61,7 @@ makeLenses ''Cell
 
 type Board = Map Coord Cell
 
+-- the positive direction of x is right and the positive direction of y is down
 type Coord = V2 Int
 
 type ColorWord = [(Coord, Cell)]
@@ -202,9 +203,9 @@ initLineBoard = do
       dir = R
   c1 <- generate (elements keyColorList)
   c2 <- generate (elements keyColorList)
-  xs <- generateGraidentCoords coord cols dir
-  ys <- generateGradientCells c1 c2 cols 4
-  let gtBoard = insertColorWord (zip xs ys) emptyBoard
+  let xs = computeGradientCoords coord cols dir
+      ys = computeGradientCells c1 c2 cols 4
+      gtBoard = insertColorWord (zip xs ys) emptyBoard
       lockedList = [V2 1 1, V2 cols 1]
   gtBoard <- return (foldr (M.adjust (\cell -> cell & locked .~ True)) gtBoard lockedList)
   board <- return (addCursor (shuffleBoard  gtBoard))
@@ -213,29 +214,29 @@ initLineBoard = do
 initRectangleBoard :: IO (Int, Int, Board, Board)
 initRectangleBoard = do
   let rows = 3
-      cols = 10
+      cols = 9
       emptyBoard = generateEmptyBoard rows cols
   c1 <- generate (elements keyColorList)
   c2 <- generate (elements keyColorList)
   c3 <- generate (elements keyColorList)
   c4 <- generate (elements keyColorList)
-  xs12 <- generateGraidentCoords (V2 1 1) cols R
-  ys12 <- generateGradientCells c1 c2 cols 4
-  let word12 = zip xs12 ys12
+  let xs12 = computeGradientCoords (V2 1 1) cols R
+      ys12 = computeGradientCells c1 c2 cols 4
+      word12 = zip xs12 ys12
   gtBoard <- return (insertColorWord word12 emptyBoard)
-  xs34 <- generateGraidentCoords (V2 1 3) cols R
-  ys34 <- generateGradientCells c3 c4 cols 4
-  let word34 = zip xs34 ys34
+  let xs34 = computeGradientCoords (V2 1 rows) cols R
+      ys34 = computeGradientCells c3 c4 cols 4
+      word34 = zip xs34 ys34
   gtBoard <- return (insertColorWord word34 gtBoard)
-  xs13 <- generateGraidentCoords (V2 1 1) rows D
-  ys13 <- generateGradientCells c1 c3 rows 4
-  let word13 = zip xs13 ys13
+  let xs13 = computeGradientCoords (V2 1 1) rows D
+      ys13 = computeGradientCells c1 c3 rows 4
+      word13 = zip xs13 ys13
   gtBoard <- return (insertColorWord word13 gtBoard)
-  xs24 <- generateGraidentCoords (V2 10 1) rows D
-  ys24 <- generateGradientCells c2 c4 rows 4
-  let word24 = zip xs24 ys24
+  let xs24 = computeGradientCoords (V2 cols 1) rows D
+      ys24 = computeGradientCells c2 c4 rows 4
+      word24 = zip xs24 ys24
   gtBoard <- return (insertColorWord word24 gtBoard)
-  let lockedList = [V2 1 1, (V2 cols 1), (V2 1 rows), (V2 cols rows)]
+  let lockedList = [V2 1 1, V2 cols 1, V2 1 rows, V2 cols rows]
   gtBoard <- return (foldr (M.adjust (\cell -> cell & locked .~ True)) gtBoard lockedList)
   let board = addCursor (shuffleBoard gtBoard)
   return (rows, cols, board, gtBoard)
@@ -243,25 +244,25 @@ initRectangleBoard = do
 initTShapeBoard :: IO (Int, Int, Board, Board)
 initTShapeBoard = do
   let rows = 5
-      cols = 10
+      cols = 9
       emptyBoard = generateEmptyBoard rows cols
   c1 <- generate (elements keyColorList)
   c2 <- generate (elements keyColorList)
-  xs <- generateGraidentCoords (V2 1 1) cols R
-  ys <- generateGradientCells c1 c2 cols 4
-  let word12 = zip xs ys
+  let xs = computeGradientCoords (V2 1 1) cols R
+      ys = computeGradientCells c1 c2 cols 4
+      word12 = zip xs ys
   gtBoard <- return (insertColorWord word12 emptyBoard)
   c3 <- generate (elements keyColorList)
   let coordMid = V2 (cols `div` 2) 1
       cMid = gtBoard M.! coordMid ^. color
-  xs <- generateGraidentCoords coordMid rows D
-  ys <- generateGradientCells cMid c3 rows 4
-  let wordMid3 = zip xs ys
+      xs = computeGradientCoords coordMid rows D
+      ys = computeGradientCells cMid c3 rows 4
+      wordMid3 = zip xs ys
   gtBoard <- return (insertColorWord wordMid3 gtBoard)
   let lockedList =  [V2 1 1, V2 cols 1, V2 (cols `div` 2) rows]
   gtBoard <- return (foldr (M.adjust (\cell -> cell & locked .~ True)) gtBoard lockedList)
   let board = addCursor (shuffleBoard gtBoard)
-  return (rows, cols, gtBoard, gtBoard)
+  return (rows, cols, board, gtBoard)
 
 shuffleBoard :: Board -> Board
 shuffleBoard board = foldr M.union M.empty [shuffledRemain, lockedItems, blackItems]
@@ -274,96 +275,31 @@ shuffleBoard board = foldr M.union M.empty [shuffledRemain, lockedItems, blackIt
 
 generateEmptyBoard :: Int -> Int -> Board
 generateEmptyBoard row col = M.fromList $ zip xs ys
-  where xs = generateCoords row col
+  where xs = [V2 x y  | x <- [1..col], y <- [1..row]] 
         ys = replicate (row * col) (Cell (0, 0, 0) False False False)
 
-updateBoardN :: Int -> Board -> Coord -> IO Board
-updateBoardN n board coord = do
-  if n == 1
-    then updateBoard board coord
-    else do
-      board' <- updateBoard board coord
-      nonBlackCells <- return (M.filter (\cell -> cell ^. color /= (0, 0, 0)) board')
-      coord' <- generate (elements (M.keys nonBlackCells))
-      updateBoardN (n-1) board' coord'
-
-updateBoard :: Board -> Coord -> IO Board
-updateBoard board coord = do
-  word' <- generateNextColorWord board coord
-  if validateWord word' board
-    then return (insertColorWord word' board)
-    else updateBoard board coord
-
-generateNextColorWord :: Board -> Coord -> IO ColorWord
-generateNextColorWord board coord = do
-  n <- generate (choose (3::Int, 7))
-  dir <- generate (elements [L, R, U, D])
-  c1 <- generate (elements keyColorList)
-  c2 <- generate (elements keyColorList)
-  xs <- generateGraidentCoords coord n dir
-  ys <- generateGradientCells c1 c2 n 4
-  return (zip xs ys)
-
-generateGraidentCoords :: Coord -> Int -> Direction -> IO [Coord]
-generateGraidentCoords coord n dir = do
-  let (V2 x y) = coord
+computeGradientCoords :: Coord -> Int -> Direction -> [Coord]
+computeGradientCoords coord n dir = 
   case dir of
-    L -> return [V2 x' y | x' <- [x - n .. x]]
-    R -> return [V2 x' y | x' <- [x .. x + n]]
-    U -> return [V2 x y' | y' <- [y - n .. y]]
-    D -> return [V2 x y' | y' <- [y .. y + n]]
+    L ->  [V2 x y | x <- [x0 - n .. x0], y <- [y0]]
+    R ->  [V2 x y | x <- [x0 .. x0 + n], y <- [y0]]
+    U ->  [V2 x y | x <- [x0], y <- [y0 - n .. y0]]
+    D ->  [V2 x y | x <- [x0], y <- [y0 .. y0 + n]]
+  where (V2 x0 y0) = coord
 
 -- we want to keep the first and the last cell the same while generating the gradient
 -- generateGradient' takes the start and end color and the number of cells in between
-generateGradientCells :: ColorVector -> ColorVector -> Int-> Int  -> IO [Cell]
-generateGradientCells (r1, g1, b1) (r2, g2, b2) n scale = do
+computeGradientCells :: ColorVector -> ColorVector -> Int-> Int  -> [Cell]
+computeGradientCells (r1, g1, b1) (r2, g2, b2) n scale = 
   let first = (r1, g1, b1)
       last = (r2, g2, b2)
       scaledFirst = (r1 `div` scale, g1 `div` scale, b1 `div` scale)
       scaledLast = (r2 `div` scale, g2 `div` scale, b2 `div` scale) 
       gradient = map (\(r, g, b) ->  (r * scale, g * scale, b * scale)) (generateGradient scaledFirst scaledLast (n-2))
-  return (map (\c -> Cell c False False False) ([first] ++ gradient ++ [last]))
+  in map (\c -> Cell c False False False) ([first] ++ gradient ++ [last])
   where
         generateGradient (r1, g1, b1) (r2, g2, b2) n = zip3 (generateGradient' r1 r2 n) (generateGradient' g1 g2 n) (generateGradient' b1 b2 n)
         generateGradient' start end n = map (\x -> x * (end - start) `div` (n+1) + start) [1..n]
-
-
--- generateGradientCells :: ColorVector -> ColorVector -> Int-> Int  -> IO [Cell]
--- generateGradientCells (r1, g1, b1) (r2, g2, b2) n scale = do
---   return (map (\(r', g', b') -> Cell (r' * scale, g' * scale, b' * scale) False False False)
---     (generateGradient (r1 `div` scale, g1 `div` scale, b1 `div` scale) (r2 `div` scale, g2 `div` scale, b2 `div` scale) n))
---   where
---         generateGradient (r1, g1, b1) (r2, g2, b2) n = zip3 (generateGradient' r1 r2 n) (generateGradient' g1 g2 n) (generateGradient' b1 b2 n)
---         generateGradient' start end n = map (\x -> x * (end - start) `div` n + start) [1..n]
-
-
-validateWord :: ColorWord -> Board -> Bool
-validateWord word board =
-  all (\(k, v) -> validateSingle k v board) word && validateLast word board && validateFirst word board
-
-validateFirst :: ColorWord -> Board -> Bool
-validateFirst word board =
-  not (M.member negCoord board) || (board M.! negCoord ^. color == (0, 0, 0))
-  where firstCoord@(V2 x0 y0) = fst (head word)
-        secondCoord@(V2 x1 y1) = fst (word !! 1)
-        dx = x1 - x0
-        dy = y1 - y0
-        negCoord = V2 (x0 - dx) (y0 - dy)
-
-
-validateLast :: ColorWord -> Board -> Bool
-validateLast word board =
-  all (\coord -> not (M.member coord board) || (board M.! coord ^. color == (0, 0, 0))) neighbors
-  where lastCoord = fst (last word)
-        neighbors = getFourNeighbors lastCoord
-        getFourNeighbors (V2 x y) = [V2 x' y' | x' <- [x - 1, x + 1], y' <- [y - 1, y + 1]]
-
-
-validateSingle :: Coord -> Cell -> Board -> Bool
-validateSingle coord cell board =
-  M.member coord board &&
-  ((board M.! coord ^. color == cell ^. color) || (board M.! coord ^. color == (0, 0, 0)))
-
 
 insertColorWord :: ColorWord -> Board -> Board
 insertColorWord word board = foldl (\b (k, v) -> M.insert k v b) board word
@@ -371,12 +307,63 @@ insertColorWord word board = foldl (\b (k, v) -> M.insert k v b) board word
 addCursor :: Board -> Board
 addCursor = M.adjust (\cell -> cell & hovered .~ True) (V2 1 1)
 
-generateCoords :: Int -> Int -> [Coord]
-generateCoords row col = [V2 x y  | x <- [1..col], y <- [1..row]]
-
 shuffle :: [a] -> [a]
 shuffle xs = map snd (sortOn fst $ zip shuffle2 xs)
   where shuffle2 = take (length xs) $ randomRs (1::Int, maxBound) (mkStdGen 42)
 
 keyColorList :: [ColorVector]
 keyColorList = shuffle [ (r, g, b) | r <- [0, 32..255], g <- [0, 32..255], b <- [0, 32..255]]
+
+
+-- validateWord :: ColorWord -> Board -> Bool
+-- validateWord word board =
+--   all (\(k, v) -> validateSingle k v board) word && validateLast word board && validateFirst word board
+
+-- validateFirst :: ColorWord -> Board -> Bool
+-- validateFirst word board =
+--   not (M.member negCoord board) || (board M.! negCoord ^. color == (0, 0, 0))
+--   where firstCoord@(V2 x0 y0) = fst (head word)
+--         secondCoord@(V2 x1 y1) = fst (word !! 1)
+--         dx = x1 - x0
+--         dy = y1 - y0
+--         negCoord = V2 (x0 - dx) (y0 - dy)
+
+-- validateLast :: ColorWord -> Board -> Bool
+-- validateLast word board =
+--   all (\coord -> not (M.member coord board) || (board M.! coord ^. color == (0, 0, 0))) neighbors
+--   where lastCoord = fst (last word)
+--         neighbors = getFourNeighbors lastCoord
+--         getFourNeighbors (V2 x y) = [V2 x' y' | x' <- [x - 1, x + 1], y' <- [y - 1, y + 1]]
+
+-- validateSingle :: Coord -> Cell -> Board -> Bool
+-- validateSingle coord cell board =
+--   M.member coord board &&
+--   ((board M.! coord ^. color == cell ^. color) || (board M.! coord ^. color == (0, 0, 0)))
+
+
+-- updateBoardN :: Int -> Board -> Coord -> IO Board
+-- updateBoardN n board coord = do
+--   if n == 1
+--     then updateBoard board coord
+--     else do
+--       board' <- updateBoard board coord
+--       nonBlackCells <- return (M.filter (\cell -> cell ^. color /= (0, 0, 0)) board')
+--       coord' <- generate (elements (M.keys nonBlackCells))
+--       updateBoardN (n-1) board' coord'
+
+-- updateBoard :: Board -> Coord -> IO Board
+-- updateBoard board coord = do
+--   word' <- generateNextColorWord board coord
+--   if validateWord word' board
+--     then return (insertColorWord word' board)
+--     else updateBoard board coord
+
+-- generateNextColorWord :: Board -> Coord -> IO ColorWord
+-- generateNextColorWord board coord = do
+--   n <- generate (choose (3::Int, 7))
+--   dir <- generate (elements [L, R, U, D])
+--   c1 <- generate (elements keyColorList)
+--   c2 <- generate (elements keyColorList)
+--   xs <- generateGraidentCoords coord n dir
+--   ys <- computeGradientCells c1 c2 n 4
+--   return (zip xs ys)
