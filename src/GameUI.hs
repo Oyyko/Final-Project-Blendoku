@@ -47,13 +47,13 @@ drawUI ui =
   [ C.center
   $ vBox
       [
-        drawCandidates (ui ^. game) candidateRows candidateCols
+        drawCandidates (ui ^. game) (ui ^. (game . boardRows) ) (ui ^. (game . boardCols) )
         , drawInfo (ui ^. game)
       ]
   ]
 
 drawInfo :: Game -> Widget Name
-drawInfo g = 
+drawInfo g =
   padLeftRight 4 $
   hBox
   [
@@ -105,23 +105,23 @@ drawBoardPlay board endOfGame = M.fromList
         cellToInfo (coord, cell) = (coord, cellToWidget cell endOfGame)
 
 drawGameState :: Game -> Widget Name
-drawGameState g = 
+drawGameState g =
     B.borderWithLabel (str "Game State")
     $ padTopBottom 1
     $ vBox
-      [ 
+      [
           padLeftRight 4 $ if isGameEnd g then str "Task Completed" else str "Task In Progress"
         , drawPointerState g
         , padLeftRight 4 $ str ("#correct = " ++  if g ^.hint then show (countEqual g) else "??")
       ]
 
 drawPointerState :: Game -> Widget n
-drawPointerState g = 
+drawPointerState g =
     padLeftRight 1
     $ vBox
     [
         hBox
-        [ 
+        [
             drawCursorGrid g
           , drawChosenGrid g
         ]
@@ -131,18 +131,18 @@ drawPointerState g =
 
 drawCursorGrid :: Game -> Widget n
 drawCursorGrid g = B.border $
-  vBox 
+  vBox
   [
-      str "Cursor: " 
+      str "Cursor: "
     , str (show (g ^. cursorPos))
     , padLeftRight 1 $ drawRectangleWithColor (cell ^. color)
   ]
   where cell = (g ^. board) M.! (g ^. cursorPos)
-        
+
 drawChosenGrid :: Game -> Widget n
 drawChosenGrid g = B.border $
-  if (g ^. chosenPos) == V2 0 0 
-      then vBox 
+  if (g ^. chosenPos) == V2 0 0
+      then vBox
       [
         str "Chosen: "
       , str "Empty"
@@ -155,7 +155,7 @@ drawChosenGrid g = B.border $
       , padLeftRight 1 $ drawRectangleWithColor (cell ^. color)
       ]
       where cell = (g ^. board) M.! (g ^. chosenPos)
-        
+
 cellToWidget :: Cell -> Bool -> Widget n
 cellToWidget cell endOfGame
   | endOfGame = drawRectangleWithColor (cell ^. color)
@@ -221,7 +221,7 @@ handleEvent _ = pure ()
 -- Currently it takes about 5 seconds to generate the color map
 gameAttrMap :: AttrMap
 gameAttrMap = attrMap V.defAttr
-    ([(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]] 
+    ([(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]]
     ++ [(attrName (colorToNameRGB (r, g, b)), bg (V.RGBColor (fromIntegral r) (fromIntegral g) (fromIntegral b))) | r <- [0, 4..255], g <- [0, 4..255], b <- [0, 4..255]]
     ++ [(attrName "chosen", bg V.blue), (attrName "hover", bg V.cyan), (attrName "locked", bg V.red)])
 
@@ -253,7 +253,7 @@ isGameEnd g = (countEqual g) == g ^.board . to M.size
 
 countEqual :: Game -> Int
 countEqual g = length $ filter (uncurry (==)) (zip xs ys)
-  where 
+  where
     xs = f (g ^.board )
     ys = f (g ^. gtBoard)
     f b = sort (map (\(k, Cell c _ _ _) -> (k, c)) (M.toList b))
