@@ -28,6 +28,7 @@ dependencies:
 - linear
 - transformers
 - random
+- QuickCheck
 
 ghc-options:
 - -Wall

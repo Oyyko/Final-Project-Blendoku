@@ -47,14 +47,14 @@ drawUI ui =
   [ C.center
   $ vBox
       [
-        drawCandidates (ui ^. game) candidateRows candidateCols
-        , drawInfo (ui ^. game)
+        padLeftRight 4 $ drawCandidates (ui ^. game) (ui ^. (game . boardRows) ) (ui ^. (game . boardCols) )
+        , padLeftRight 4 $ drawInfo (ui ^. game)
       ]
   ]
 
 drawInfo :: Game -> Widget Name
-drawInfo g = 
-  padLeftRight 4 $
+drawInfo g =
+  hLimit 50 $ 
   hBox
   [
     drawGameState g
@@ -87,7 +87,6 @@ drawHelp =
       , ("Up"     , "↑")
       , ("Down"   , "↓")
       , ("Hint"   , "h")
-      , ("Lock"   , "l")
       , ("Choose",  "Space")
       , ("Swap",   "Enter")
       , ("Quit"   , "q")
@@ -105,57 +104,70 @@ drawBoardPlay board endOfGame = M.fromList
         cellToInfo (coord, cell) = (coord, cellToWidget cell endOfGame)
 
 drawGameState :: Game -> Widget Name
-drawGameState g = 
-    B.borderWithLabel (str "Game State")
+drawGameState g =
+    let title = if isGameEnd g then "Game Completed" else "Game In Progress" in
+    B.borderWithLabel (str title)
+    $ hLimit 25
     $ padTopBottom 1
     $ vBox
-      [ 
-          padLeftRight 4 $ if isGameEnd g then str "Task Completed" else str "Task In Progress"
-        , drawPointerState g
-        , padLeftRight 4 $ str ("#correct = " ++  if g ^.hint then show (countEqual g) else "??")
+      [
+         drawPointerState g
+        , if g ^.hint then drawHint g else emptyWidget 
       ]
 
 drawPointerState :: Game -> Widget n
-drawPointerState g = 
+drawPointerState g =
     padLeftRight 1
     $ vBox
     [
         hBox
-        [ 
+        [
             drawCursorGrid g
           , drawChosenGrid g
         ]
-      , padLeftRight 4 $ str "Locked: " <+> str (show (cell ^. locked))
     ]
     where cell = (g ^. board) M.! (g ^. cursorPos)
 
 drawCursorGrid :: Game -> Widget n
-drawCursorGrid g = B.border $
-  vBox 
+drawCursorGrid g = 
+  padLeftRight 2 $ 
+  vBox
   [
-      str "Cursor: " 
-    , str (show (g ^. cursorPos))
-    , padLeftRight 1 $ drawRectangleWithColor (cell ^. color)
+      str (show (g ^. cursorPos))
+    , drawRectangleWithColor (cell ^. color)
+    , str "Cursor"
+    , if cell ^. locked then str "locked" else str "free"
   ]
   where cell = (g ^. board) M.! (g ^. cursorPos)
-        
+
 drawChosenGrid :: Game -> Widget n
-drawChosenGrid g = B.border $
-  if (g ^. chosenPos) == V2 0 0 
-      then vBox 
+drawChosenGrid g = 
+  padLeftRight 2 $
+  if (g ^. chosenPos) == V2 0 0
+      then vBox
       [
-        str "Chosen: "
-      , str "Empty"
+        str "Empty"
       , emptyGridW
+      , str "Chosen"
       ]
       else vBox
       [
-        str "Chosen: "
-      , str (show (g ^. chosenPos))
-      , padLeftRight 1 $ drawRectangleWithColor (cell ^. color)
+        str (show (g ^. chosenPos))
+      , drawRectangleWithColor (cell ^. color)
+      , str "Chosen"
       ]
       where cell = (g ^. board) M.! (g ^. chosenPos)
-        
+
+
+drawHint :: Game -> Widget n
+drawHint g = 
+  B.borderWithLabel (str "Hint") $ 
+  vBox
+  [
+      str "correct / changeable"
+    , str "Progress: " <+> str (show (countCorrectChangeable g)) <+> str "/" <+> str (show (countChangeable g))
+  ]
+
 cellToWidget :: Cell -> Bool -> Widget n
 cellToWidget cell endOfGame
   | endOfGame = drawRectangleWithColor (cell ^. color)
@@ -186,14 +198,14 @@ drawRectangleWithColor color =
    ,  withAttr (attrName (colorToNameRGB color)) (str "     ")
   ]
 
-playGame :: IO Game
-playGame = do
+playGame :: Int -> IO Game
+playGame gameType = do
   let delay = 100000
   chan <- newBChan 10
   void . forkIO $ forever $ do
     writeBChan chan Tick
     threadDelay delay
-  initialGame <- initGame
+  initialGame <- initGame gameType
   let builder = V.mkVty V.defaultConfig
   initialVty <- builder
   ui <- customMain initialVty builder (Just chan) app $ UI
@@ -206,7 +218,7 @@ handleEvent :: BrickEvent Name Tick -> EventM Name UI ()
 handleEvent (VtyEvent (V.EvKey (V.KChar ' ') [])) = exec (toggleSelection)
 handleEvent (VtyEvent (V.EvKey V.KEnter      [])) = exec (swapWithChosen)
 handleEvent (VtyEvent (V.EvKey (V.KChar 'h') [])) = exec (toggleHint)
-handleEvent (VtyEvent (V.EvKey (V.KChar 'l') [])) = exec (toggleLock)
+-- handleEvent (VtyEvent (V.EvKey (V.KChar 'l') [])) = exec (toggleLock)
 handleEvent (VtyEvent (V.EvKey V.KRight      [])) = exec (shift R)
 handleEvent (VtyEvent (V.EvKey V.KLeft       [])) = exec (shift L)
 handleEvent (VtyEvent (V.EvKey V.KDown       [])) = exec (shift D)
@@ -221,8 +233,8 @@ handleEvent _ = pure ()
 -- Currently it takes about 5 seconds to generate the color map
 gameAttrMap :: AttrMap
 gameAttrMap = attrMap V.defAttr
-    ([(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]] 
-    ++ [(attrName (colorToNameRGB (r, g, b)), bg (V.RGBColor (fromIntegral r) (fromIntegral g) (fromIntegral b))) | r <- [0, 2..254], g <- [0, 2..254], b <- [0, 2..254]]
+    ([(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]]
+    ++ [(attrName (colorToNameRGB (r, g, b)), bg (V.RGBColor (fromIntegral r) (fromIntegral g) (fromIntegral b))) | r <- [0, 4..255], g <- [0, 4..255], b <- [0, 4..255]]
     ++ [(attrName "chosen", bg V.blue), (attrName "hover", bg V.cyan), (attrName "locked", bg V.red)])
 
 exec :: BlendokuGame () -> EventM Name UI ()
@@ -251,9 +263,21 @@ withSameState board1 board2 =
 isGameEnd :: Game -> Bool
 isGameEnd g = (countEqual g) == g ^.board . to M.size
 
+countLocked :: Game -> Int
+countLocked g = length $ filter (\(_, Cell _ _ _ l) -> l) (M.toList (g ^. board))
+
+countBlack :: Game -> Int
+countBlack g = length $ filter (\(_, Cell c _ _ _) -> c == (0, 0, 0)) (M.toList (g ^. board))
+
+countChangeable :: Game -> Int
+countChangeable g = g ^.board . to M.size - countLocked g - countBlack g
+
+countCorrectChangeable :: Game -> Int
+countCorrectChangeable g = countEqual g - countLocked g - countBlack g
+
 countEqual :: Game -> Int
 countEqual g = length $ filter (uncurry (==)) (zip xs ys)
-  where 
+  where
     xs = f (g ^.board )
     ys = f (g ^. gtBoard)
     f b = sort (map (\(k, Cell c _ _ _) -> (k, c)) (M.toList b))
