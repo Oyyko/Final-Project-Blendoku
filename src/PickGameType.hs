@@ -31,12 +31,13 @@ ui =
     $ B.borderWithLabel (str "Blendoku")
     $ C.center
     $ vBox
-        [ str "Game Type (0-2)"
+        [ str "Main Menu: Game Type (0-5)"
         , str "  0: Line"
         , str "  1: Rectangle"
         , str "  2: TShape"
         , str "  3: HShape"
-        , str "  4: Random"
+        , str "  4: Random" 
+        , str "  5: Challenge" --challenge mode
         ]
 
 handleEvent :: BrickEvent () e -> EventM () (Maybe Int) ()
@@ -44,7 +45,7 @@ handleEvent (VtyEvent (V.EvKey V.KEsc        _)) = halt
 handleEvent (VtyEvent (V.EvKey (V.KChar 'q') _)) = halt
 handleEvent (VtyEvent (V.EvKey (V.KChar 'Q') _)) = halt
 handleEvent (VtyEvent (V.EvKey (V.KChar d) [])) =
-  when (d `elem` ['0' .. '4']) $ do
+  when (d `elem` ['0' .. '5']) $ do
     put $ Just $ read [d]
     halt
 handleEvent _ = pure ()
