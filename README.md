@@ -25,6 +25,15 @@ Below is a `GIF` demonstrating how to play Blendoku, along with some useful link
 - [Blendoku2 on AppStore](https://apptopia.com/ios/app/1017177662/about)
 - [Github search result for "Blendoku"](https://github.com/search?q=Blendoku&type=repositories)
 
+## How to play (Install and run)
+```shell
+git clone https://github.com/Oyyko/Final-Project-Blendoku
+cd Final-Project-Blendoku
+stack build
+stack exec Blendoku-exe
+```
+If `stack exec Blendoku-exe` not working, try `stack run app` instead.
+
 
 ## To-do list
 Here are some of the tasks that we need to complete are listed as follows: 

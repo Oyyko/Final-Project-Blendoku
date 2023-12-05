@@ -26,7 +26,7 @@ import Blendoku
 data Tick = Tick
 type Name = ()
 
-data UI = UI
+data UI = UI    --不需要用UI的参数
   {
     _game    :: Game         -- ^ blendoku game
   , _paused  :: Bool         -- ^ game paused
@@ -54,7 +54,7 @@ drawUI ui =
 
 drawInfo :: Game -> Widget Name
 drawInfo g =
-  hLimit 50 $ 
+  hLimit 50 $
   hBox
   [
     drawGameState g
@@ -112,7 +112,10 @@ drawGameState g =
     $ vBox
       [
          drawPointerState g
-        , if g ^.hint then drawHint g else emptyWidget 
+        , if g ^.hint then drawHint g else emptyWidget
+        , if g^.isChallenge then str "Remaining Time: " <+> str (show (g ^. remainTime)) <+> str "s" else emptyWidget
+        , if g^.isChallenge && g ^. remainTime <=30 then str "Time's nearly up! Challenge will fail if not completed in time!" else emptyWidget
+        , if g^.isChallenge && g ^. level == g^.maxLevel && isGameEnd g then str "Congratulations! Challenge Completed!" else emptyWidget
       ]
 
 drawPointerState :: Game -> Widget n
@@ -129,8 +132,8 @@ drawPointerState g =
     where cell = (g ^. board) M.! (g ^. cursorPos)
 
 drawCursorGrid :: Game -> Widget n
-drawCursorGrid g = 
-  padLeftRight 2 $ 
+drawCursorGrid g =
+  padLeftRight 2 $
   vBox
   [
       str (show (g ^. cursorPos))
@@ -141,7 +144,7 @@ drawCursorGrid g =
   where cell = (g ^. board) M.! (g ^. cursorPos)
 
 drawChosenGrid :: Game -> Widget n
-drawChosenGrid g = 
+drawChosenGrid g =
   padLeftRight 2 $
   if (g ^. chosenPos) == V2 0 0
       then vBox
@@ -160,8 +163,8 @@ drawChosenGrid g =
 
 
 drawHint :: Game -> Widget n
-drawHint g = 
-  B.borderWithLabel (str "Hint") $ 
+drawHint g =
+  B.borderWithLabel (str "Hint") $
   vBox
   [
       str "correct / changeable"
@@ -198,11 +201,13 @@ drawRectangleWithColor color =
    ,  withAttr (attrName (colorToNameRGB color)) (str "     ")
   ]
 
+
+-- Main Func
 playGame :: Int -> IO Game
 playGame gameType = do
-  let delay = 100000
+  let delay = 1000000           -- unit: microsecond (1 second = 1,000,000 microseconds)
   chan <- newBChan 10
-  void . forkIO $ forever $ do
+  void . forkIO $ forever $ do      -- 无限循环：Tick计时
     writeBChan chan Tick
     threadDelay delay
   initialGame <- initGame gameType
@@ -225,7 +230,29 @@ handleEvent (VtyEvent (V.EvKey V.KDown       [])) = exec (shift D)
 handleEvent (VtyEvent (V.EvKey V.KUp         [])) = exec (shift U)
 handleEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
 handleEvent (VtyEvent (V.EvKey V.KEsc        [])) = halt
-handleEvent _ = pure ()
+handleEvent (AppEvent Tick) = exec timeTickPerGame
+
+-- other challege mode idea
+-- handleEvent (AppEvent Tick) = challengeMode
+-- challengeMode :: IO()
+-- challengeMode = do
+--   ui <- get
+--   let g = ui ^. game
+--   when (g^. isChallenge && g^. remainTime > 0 && isGameEnd g && g^.level<g^.maxLevel) $ do
+--     newGame <- initGame (g^.level +1)
+--     modify (\u -> u { _game = newGame })
+--   -- when (g^. isChallenge && g^. remainTime > 0 && isGameEnd g && g^.level==g^.maxLevel) $ do
+--   --   threadDelay 5*1000
+--   --   halt
+
+-- initNewGame :: BrickEvent Name Tick -> IO Game
+-- initNewGame ev = do
+--   ui <- get
+--   let g = ui ^. game
+--   when (g ^. isChallenge && g ^. remainTime > 0 && isGameEnd g && g ^. level < g ^. maxLevel) $ do
+--     newGame <- initGame (g ^. level + 1)
+--     modify (\u -> u { _game = newGame })
+--   return $ ui ^. game
 
 --  support RGB/gray color
 -- for gray color, the color is from 0 to 255
@@ -261,7 +288,7 @@ withSameState board1 board2 =
   in sort items1 == sort items2
 
 isGameEnd :: Game -> Bool
-isGameEnd g = (countEqual g) == g ^.board . to M.size
+isGameEnd g = (countEqual g) == M.size (g ^.board)
 
 countLocked :: Game -> Int
 countLocked g = length $ filter (\(_, Cell _ _ _ l) -> l) (M.toList (g ^. board))
@@ -270,7 +297,7 @@ countBlack :: Game -> Int
 countBlack g = length $ filter (\(_, Cell c _ _ _) -> c == (0, 0, 0)) (M.toList (g ^. board))
 
 countChangeable :: Game -> Int
-countChangeable g = g ^.board . to M.size - countLocked g - countBlack g
+countChangeable g = M.size (g ^.board) - countLocked g - countBlack g
 
 countCorrectChangeable :: Game -> Int
 countCorrectChangeable g = countEqual g - countLocked g - countBlack g
@@ -281,3 +308,8 @@ countEqual g = length $ filter (uncurry (==)) (zip xs ys)
     xs = f (g ^.board )
     ys = f (g ^. gtBoard)
     f b = sort (map (\(k, Cell c _ _ _) -> (k, c)) (M.toList b))
+
+
+
+
+

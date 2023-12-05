@@ -13,8 +13,8 @@ module Blendoku
     , Direction(..)
     , MazeType(..)
     , BlendokuGame
-    , level, hint
-    , board, gtBoard, boardRows, boardCols
+    , level, hint, maxLevel
+    , board, gtBoard, boardRows, boardCols, remainTime, isChallenge
     , cursorPos, chosenPos
     , color, chosen, hovered, locked
     , colorToNameRGB
@@ -23,6 +23,7 @@ module Blendoku
     , toggleSelection
     , toggleHint
     , toggleLock
+    , timeTickPerGame
     , swapWithChosen
     , execBlendokuGame
     , evalBlendokuGame
@@ -45,7 +46,7 @@ import Data.IntMap (insert)
 data Direction = L | R | U | D
   deriving (Eq, Show)
 
-data MazeType = Line | Rectangle | TShape | HShape | RandomShape
+data MazeType = Line | Rectangle | TShape | HShape | RandomShape | Challenge
   deriving (Eq, Show, Enum)
 
 type ColorVector = (Int, Int, Int) -- (R, G, B)
@@ -75,6 +76,9 @@ data Game = Game
   , _hint          :: Bool
   , _boardRows          :: Int
   , _boardCols          :: Int
+  , _remainTime ::Int
+  , _isChallenge :: Bool
+  , _maxLevel :: Int
   } deriving (Eq, Show)
 
 makeLenses ''Game
@@ -144,6 +148,14 @@ shift dir = do
       board' = M.insert cursor cell1' (M.insert cursor' cell2' board)
   Control.Monad.when (M.member cursor' board) $ modify $ \g -> g { _board = board', _cursorPos = cursor'}
 
+timeTickPerGame :: BlendokuGame ()
+timeTickPerGame = do
+  remainTime <- gets _remainTime
+  -- isChallenge <- gets _isChallenge
+  if remainTime == 0 then pure()
+  --   when isChallenge halt                -- game over, implement halt in GameUI.hs, not here because Blendoku.hs only cares about logic inside one ui^.game
+  else modify $ \g -> g { _remainTime = remainTime - 1 }
+
 updateCursor :: Coord -> Direction -> Coord
 updateCursor (V2 x y) dir = case dir of
   L -> V2 (x - 1) y
@@ -174,6 +186,8 @@ colorToNameRGB (r, g, b) = "(" ++ show r ++ "," ++ show g ++ "," ++ show b ++ ")
 colorToNameGray :: Int -> String
 colorToNameGray x = "gray " ++ show x
 
+
+-- initialize ui^.game's state, parameters etc.
 initGame :: Int -> IO Game
 initGame val = do
   gameType <- case val of
@@ -182,15 +196,17 @@ initGame val = do
     2 -> return TShape
     3 -> return HShape
     4 -> return RandomShape
+    5 -> return Challenge
   (rows, cols, board, gtBoard) <- case gameType of
     Line -> initLineBoard
     Rectangle -> initRectangleBoard
     TShape -> initTShapeBoard
     HShape -> initHShapeBoard
     RandomShape -> initRandomShapeBoard
+    Challenge -> initChallengeBoard 
   return  Game
     {
-        _level        = 0
+        _level        = if val==5 then 0 else val   -- start from level 0 if challenge mode
       , _board          = board
       , _gtBoard        = gtBoard
       , _cursorPos       = V2 1 1
@@ -199,6 +215,9 @@ initGame val = do
       , _hint            = False
       , _boardRows       = rows
       , _boardCols       = cols
+      , _remainTime     = 60*5      -- 5 minutes      
+      , _isChallenge    = val == 5
+      , _maxLevel       = 4
     }
 
 initLineBoard :: IO (Int, Int, Board, Board)
@@ -423,3 +442,20 @@ generateNextColorWord coord = do
   let xs = computeGradientCoords coord n dir
       ys = computeGradientCells c1 c2 n 4
   return (zip xs ys)
+
+initChallengeBoard :: IO (Int, Int, Board, Board)
+initChallengeBoard = do 
+  level <- generate (choose (0::Int, 4))
+  case level `mod` 4 of
+    0 -> initLineBoard
+    1 -> initRectangleBoard
+    2 -> initTShapeBoard
+    3 -> initHShapeBoard
+    4 -> initRandomShapeBoard
+
+-- Challenge mode: advance to next level
+-- nextLevel :: Game -> IO Game
+-- nextLevel g = do
+--   let newLevel = (_level g) + 1
+--   (_, _, newBoard, newGtBoard) <- initChallengeBoard newLevel
+--   return g { _level = newLevel, _board = newBoard, _gtBoard = newGtBoard }
