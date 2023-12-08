@@ -32,7 +32,7 @@ where
 
 import Control.Lens hiding (preview, op, zoom, (<|), chosen, elements)
 import Data.Map (Map)
-import Data.Map as M (fromList, toList, (!), insert, member, keys, filter, union, empty, adjust)
+import Data.Map as M (fromList, toList, (!), insert, member, keys, filter, union, empty, adjust, null)
 import Linear.V2 (V2(..))
 import Data.String (String)
 import Control.Monad.Trans.State (StateT(..), gets, evalStateT, execStateT, modify, execStateT)
@@ -152,7 +152,7 @@ timeTickPerGame :: BlendokuGame ()
 timeTickPerGame = do
   remainTime <- gets _remainTime
   -- isChallenge <- gets _isChallenge
-  if remainTime == 0 then pure()
+  if remainTime == 0 then pure ()
   --   when isChallenge halt                -- game over, implement halt in GameUI.hs, not here because Blendoku.hs only cares about logic inside one ui^.game
   else modify $ \g -> g { _remainTime = remainTime - 1 }
 
@@ -203,7 +203,7 @@ initGame val = do
     TShape -> initTShapeBoard
     HShape -> initHShapeBoard
     RandomShape -> initRandomShapeBoard
-    Challenge -> initChallengeBoard 
+    Challenge -> initChallengeBoard
   return  Game
     {
         _level        = if val==5 then 0 else val   -- start from level 0 if challenge mode
@@ -325,28 +325,23 @@ initRandomShapeBoard = do
   let rows = 9
       cols = 9
       emptyBoard = generateEmptyBoard rows cols
-  startRow <- generate (choose (1::Int, rows))
-  startCol <- generate (choose (1::Int, cols))
-  let startCoord = V2 startCol startRow
-      gtBoard = emptyBoard
-  colorWord <- generateNextValidColorWord gtBoard startCoord
-  gtBoard <- return (insertColorWord colorWord gtBoard)
+      boardPair = (emptyBoard, emptyBoard)
+  boardPair <- updateBoard rows cols boardPair
+  boardPair <- updateBoard rows cols boardPair
+  boardPair <- updateBoard rows cols boardPair
+  boardPair <- updateBoard rows cols boardPair
+  boardPair <- updateBoard rows cols boardPair
+  (board, gtBoard) <- updateBoard rows cols boardPair
+  -- boardPair <- updateBoard rows cols boardPair
 
-  gtBoard <- updateBoard gtBoard
-  gtBoard <- updateBoard gtBoard
-  gtBoard <- updateBoard gtBoard
-  gtBoard <- updateBoard gtBoard
-
-  let board = addCursor (shuffleBoard gtBoard)
-  return (rows, cols, gtBoard, gtBoard)
+  -- let board = addCursor (shuffleBoard board)
+  return (rows, cols, board, gtBoard)
 
 
-updateBoard :: Board ->  IO Board
-updateBoard board = do
-  nonEmptyGrids <- return (M.filter (\cell -> cell ^. color /= (0, 0, 0)) board)
-  coord' <- generate (elements (M.keys nonEmptyGrids))
-  word' <- generateNextValidColorWord board coord'
-  return (insertColorWord word' board)
+updateBoard :: Int -> Int -> (Board, Board) ->  IO (Board, Board)
+updateBoard _ _ (board, gtBoard) = do
+    word' <- generateNextValidColorWord board
+    return (insertColorWord word' board, gtBoard)
 
 shuffleBoard :: Board -> Board
 shuffleBoard board = foldr M.union M.empty [shuffledRemain, lockedItems, blackItems]
@@ -426,12 +421,16 @@ validateSingle coord cell board =
 --     then return (insertColorWord word' board)
 --     else updateBoard board coord
 
-generateNextValidColorWord :: Board -> Coord -> IO ColorWord
-generateNextValidColorWord board coord = do
-  word' <- generateNextColorWord coord
-  if validateWord word' board
-    then return word'
-    else generateNextValidColorWord board coord
+generateNextValidColorWord :: Board -> IO ColorWord
+generateNextValidColorWord board = do
+  let nonEmptyGrids = M.filter (\cell -> cell ^. color /= (0, 0, 0)) board in
+    do
+      coord <- generate (elements (M.keys nonEmptyGrids ++ [V2 1 1]))
+      word' <- generateNextColorWord coord
+      -- putStrLn (show word')
+      if validateWord word' board
+        then return word'
+        else generateNextValidColorWord board
 
 generateNextColorWord ::  Coord -> IO ColorWord
 generateNextColorWord coord = do
@@ -444,7 +443,7 @@ generateNextColorWord coord = do
   return (zip xs ys)
 
 initChallengeBoard :: IO (Int, Int, Board, Board)
-initChallengeBoard = do 
+initChallengeBoard = do
   level <- generate (choose (0::Int, 4))
   case level `mod` 4 of
     0 -> initLineBoard
