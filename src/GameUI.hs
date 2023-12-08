@@ -231,6 +231,7 @@ handleEvent (VtyEvent (V.EvKey V.KUp         [])) = exec (shift U)
 handleEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
 handleEvent (VtyEvent (V.EvKey V.KEsc        [])) = halt
 handleEvent (AppEvent Tick) = exec timeTickPerGame
+handleEvent _ = pure ()
 
 -- other challege mode idea
 -- handleEvent (AppEvent Tick) = challengeMode
