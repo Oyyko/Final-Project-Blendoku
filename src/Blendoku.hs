@@ -14,7 +14,7 @@ module Blendoku
     , Direction(..)
     , MazeType(..)
     , BlendokuGame
-    , level, hint, maxLevel, playerName
+    , level, hint, maxLevel, playerName, isGray
     , board, gtBoard, boardRows, boardCols, remainTime, isChallenge
     , cursorPos, chosenPos
     , color, chosen, hovered, locked
@@ -24,6 +24,7 @@ module Blendoku
     , toggleSelection
     , toggleHint
     , toggleLock
+    , toggleGray
     , timeTickPerGame
     , swapWithChosen
     , execBlendokuGame
@@ -81,6 +82,7 @@ data Game = Game
   , _isChallenge :: Bool
   , _maxLevel :: Int
   , _playerName :: String
+  , _isGray :: Bool
   } deriving (Eq, Show)
 
 makeLenses ''Game
@@ -137,6 +139,10 @@ toggleLock = do
       cell' = cell & locked %~ not
       board' = M.insert cursorPos cell' board
   modify $ \g -> g { _board = board' }
+
+toggleGray :: BlendokuGame ()
+toggleGray = do
+  modify $ \g -> g { _isGray = not (_isGray g) }
 
 shift :: Direction -> BlendokuGame ()
 shift dir = do
@@ -220,6 +226,7 @@ initGame isChallenge lvl playerName = do
       , _isChallenge    = isChallenge
       , _maxLevel       = 4
       , _playerName = playerName
+      , _isGray = False
     }
 
 initLineBoard :: IO (Int, Int, Board, Board)

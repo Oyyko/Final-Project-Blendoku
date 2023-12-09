@@ -70,7 +70,7 @@ drawCandidates g rows cols =
             . M.filterWithKey (\(V2 _ y) _ -> r == y)
             $ mconcat
                 [
-                    drawBoardPlay (g ^. board) endOfGame
+                    drawBoardPlay g (g ^. board) endOfGame
                    ,emptyWidgetMap rows cols
                 ]
     where endOfGame = isGameEnd g
@@ -91,6 +91,7 @@ drawHelp =
       , ("Choose",  "Space")
       , ("Swap",   "Enter")
       , ("Quit"   , "q")
+      , ("RGB/Gray", "g")
       ]
 
 drawKeyInfo :: String -> String -> Widget Name
@@ -98,11 +99,11 @@ drawKeyInfo action keys =
   padRight Max (padLeft (Pad 1) $ str action)
     <+> padLeft Max (padRight (Pad 1) $ str keys)
 
-drawBoardPlay :: Board -> Bool -> Map Coord (Widget n)
-drawBoardPlay board endOfGame = M.fromList
+drawBoardPlay :: Game -> Board -> Bool -> Map Coord (Widget n)
+drawBoardPlay g board endOfGame = M.fromList
    (map cellToInfo (M.toList board)) where
         cellToInfo :: (Coord, Cell) -> (Coord, Widget n)
-        cellToInfo (coord, cell) = (coord, cellToWidget cell endOfGame)
+        cellToInfo (coord, cell) = (coord, cellToWidget g cell endOfGame)
 
 drawGameState :: Game -> Widget Name
 drawGameState g =
@@ -177,11 +178,12 @@ drawCursorGrid g =
   vBox
   [
       str (show (g ^. cursorPos))
-    , drawRectangleWithColor (cell ^. color)
+    , drawRectangleWithColor isGrayMode (cell ^. color)
     , str "Cursor"
     , if cell ^. locked then str "locked" else str "free"
   ]
   where cell = (g ^. board) M.! (g ^. cursorPos)
+        isGrayMode = g ^. isGray
 
 drawChosenGrid :: Game -> Widget n
 drawChosenGrid g =
@@ -196,10 +198,11 @@ drawChosenGrid g =
       else vBox
       [
         str (show (g ^. chosenPos))
-      , drawRectangleWithColor (cell ^. color)
+      , drawRectangleWithColor isGrayMode (cell ^. color)
       , str "Chosen"
       ]
       where cell = (g ^. board) M.! (g ^. chosenPos)
+            isGrayMode = g ^. isGray
 
 
 drawHint :: Game -> Widget n
@@ -211,36 +214,45 @@ drawHint g =
     , str "Progress: " <+> str (show (countCorrectChangeable g)) <+> str "/" <+> str (show (countChangeable g))
   ]
 
-cellToWidget :: Cell -> Bool -> Widget n
-cellToWidget cell endOfGame
-  | endOfGame = drawRectangleWithColor (cell ^. color)
-  | cell ^. chosen = drawRectangleWithAttr (cell ^. color) "chosen"
-  | cell ^. hovered = drawRectangleWithAttr (cell ^. color) "hover"
-  | otherwise = drawRectangleWithColor (cell ^. color)
+cellToWidget :: Game -> Cell -> Bool -> Widget n
+cellToWidget g cell endOfGame
+  | endOfGame = drawRectangleWithColor isGrayMode (cell ^. color)
+  | cell ^. chosen = drawRectangleWithAttr isGrayMode (cell ^. color) "chosen"
+  | cell ^. hovered = drawRectangleWithAttr isGrayMode (cell ^. color) "hover"
+  | otherwise = drawRectangleWithColor isGrayMode (cell ^. color)
+  where isGrayMode = g ^. isGray
 
 emptyWidgetMap :: Int -> Int -> Map Coord (Widget n)
 emptyWidgetMap rows cols = M.fromList
   [ (V2 c r, emptyGridW) | r <- [1 .. rows], c <- [1 .. cols] ]
 
 emptyGridW :: Widget n
-emptyGridW = padLeft (Pad 1) $ drawRectangleWithColor (254, 254, 254)
+emptyGridW = padLeft (Pad 1) $ drawRectangleWithColor True (254, 254, 254)
 
-drawRectangleWithAttr :: ColorVector ->String -> Widget n
-drawRectangleWithAttr color name =
+drawRectangleWithAttr :: Bool -> ColorVector ->String -> Widget n
+drawRectangleWithAttr grayMode color name =
   let char = if name == "chosen" then "◼︎" else "◻︎" in
     vBox
   [
-      withAttr (attrName (colorToNameRGB color)) (str (" " ++ char ++ " " ++ char ++ " "))
-    ,  withAttr (attrName (colorToNameRGB color)) (str (" " ++ char ++ " " ++ char ++ " "))
+      withAttr (attrName (colorToNameRGB c')) (str (" " ++ char ++ " " ++ char ++ " "))
+    ,  withAttr (attrName (colorToNameRGB c')) (str (" " ++ char ++ " " ++ char ++ " "))
        ]
+    where c' = if grayMode then bgrToGray color else color
 
-drawRectangleWithColor :: ColorVector -> Widget n
-drawRectangleWithColor color =
+drawRectangleWithColor :: Bool -> ColorVector -> Widget n
+drawRectangleWithColor grayMode color =
     vBox
   [
-      withAttr (attrName (colorToNameRGB color)) (str "     ")
-   ,  withAttr (attrName (colorToNameRGB color)) (str "     ")
+      withAttr (attrName (colorToNameRGB c')) (str "     ")
+   ,  withAttr (attrName (colorToNameRGB c')) (str "     ")
   ]
+  where c' = if grayMode then bgrToGray color else color
+
+bgrToGray :: ColorVector -> ColorVector
+bgrToGray (r, g, b) = (v', v', v')
+  where
+    v' = (round v) `div` 32 * 32
+    v  = 0.299 * fromIntegral r + 0.587 * fromIntegral g + 0.114 * fromIntegral b 
 
 
 -- Main Func
@@ -265,6 +277,7 @@ handleEvent :: BrickEvent Name Tick -> EventM Name UI ()
 handleEvent (VtyEvent (V.EvKey (V.KChar ' ') [])) = exec (toggleSelection)
 handleEvent (VtyEvent (V.EvKey V.KEnter      [])) = exec (swapWithChosen)
 handleEvent (VtyEvent (V.EvKey (V.KChar 'h') [])) = exec (toggleHint)
+handleEvent (VtyEvent (V.EvKey (V.KChar 'g') [])) = exec (toggleGray)
 -- handleEvent (VtyEvent (V.EvKey (V.KChar 'l') [])) = exec (toggleLock)
 -- handleEvent (VtyEvent (V.EvKey (V.KChar 'n') [])) = goToNextLevel
 handleEvent (VtyEvent (V.EvKey V.KRight      [])) = exec (shift R)
