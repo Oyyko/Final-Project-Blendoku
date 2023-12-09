@@ -154,7 +154,7 @@ timeTickPerGame = do
   remainTime <- gets _remainTime
   -- isChallenge <- gets _isChallenge
 
-  if remainTime == 0 then pure ()
+  -- if remainTime == 0 then pure ()
   --   when isChallenge halt                -- game over, implement halt in GameUI.hs, not here because Blendoku.hs only cares about logic inside one ui^.game
   if remainTime > 0 then modify $ \g -> g { _remainTime = remainTime - 1 } else pure()
 
