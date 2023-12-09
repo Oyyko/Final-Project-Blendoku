@@ -65,3 +65,6 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - Blendoku
+    - QuickCheck
+    - tasty
+    - tasty-hunit

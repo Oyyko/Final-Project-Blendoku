@@ -29,6 +29,9 @@ module Blendoku
     , swapWithChosen
     , execBlendokuGame
     , evalBlendokuGame
+    -- this part is for testing
+    , keyColorList, generateEmptyBoard, generateNextColorWord
+    , updateBoard, shuffleBoard, computeGradientCells, computeGradientCoords
 )
 where
 
@@ -373,10 +376,10 @@ generateEmptyBoard row col = M.fromList $ zip xs ys
 computeGradientCoords :: Coord -> Int -> Direction -> [Coord]
 computeGradientCoords coord n dir =
   case dir of
-    L ->  reverse [V2 x y | x <- [x0 - n .. x0], y <- [y0]]
-    R ->  [V2 x y | x <- [x0 .. x0 + n], y <- [y0]]
-    U ->  reverse [V2 x y | x <- [x0], y <- [y0 - n .. y0]]
-    D ->  [V2 x y | x <- [x0], y <- [y0 .. y0 + n]]
+    L ->  reverse [V2 x y | x <- [x0 - n + 1 .. x0], y <- [y0]]
+    R ->  [V2 x y | x <- [x0 .. x0 + n - 1], y <- [y0]]
+    U ->  reverse [V2 x y | x <- [x0], y <- [y0 - n + 1 .. y0]]
+    D ->  [V2 x y | x <- [x0], y <- [y0 .. y0 + n - 1]]
   where (V2 x0 y0) = coord
 
 -- we want to keep the first and the last cell the same while generating the gradient
@@ -387,11 +390,11 @@ computeGradientCells (r1, g1, b1) (r2, g2, b2) n scale =
       last = (r2, g2, b2)
       scaledFirst = (r1 `div` scale, g1 `div` scale, b1 `div` scale)
       scaledLast = (r2 `div` scale, g2 `div` scale, b2 `div` scale)
-      gradient = map (\(r, g, b) ->  (r * scale, g * scale, b * scale)) (generateGradient scaledFirst scaledLast (n-2))
+      gradient = map (\(r, g, b) ->  (r * scale, g * scale, b * scale)) (generateGradient scaledFirst scaledLast n)
   in map (\c -> Cell c False False False) ([first] ++ gradient ++ [last])
   where
         generateGradient (r1, g1, b1) (r2, g2, b2) n = zip3 (generateGradient' r1 r2 n) (generateGradient' g1 g2 n) (generateGradient' b1 b2 n)
-        generateGradient' start end n = map (\x -> x * (end - start) `div` (n+1) + start) [1..n]
+        generateGradient' start end n = map (\x -> x * (end - start) `div` (n-1) + start) [1..n-2]
 
 insertColorWord :: ColorWord -> Board -> Board
 insertColorWord word board = foldl (\b (k, v) -> M.insert k v b) board word
