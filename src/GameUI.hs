@@ -113,6 +113,7 @@ drawGameState g =
     $ vBox
       [
          drawPointerState g
+        , vBox[padLeftRight 2 $ str ("Player: "++(g ^. playerName))]
         , if g ^.hint then drawHint g else emptyWidget
         , if g ^.isChallenge then 
           vBox
@@ -243,15 +244,15 @@ drawRectangleWithColor color =
 
 
 -- Main Func
-playGame :: Int -> IO Game
-playGame gameType = do
+playGame :: Int -> String -> IO Game
+playGame gameType playerName = do
   let delay = 1000           -- unit: microsecond (1 second = 1,000,000 microseconds)
   chan <- newBChan 10
   void . forkIO $ forever $ do      -- 无限循环：Tick计时
     writeBChan chan Tick
     threadDelay delay
   (lvl, isChallenge) <- if gameType == 5 then return (0, True) else return (gameType, False)
-  initialGame <- initGame isChallenge lvl
+  initialGame <- initGame isChallenge lvl playerName
   let builder = V.mkVty V.defaultConfig
   initialVty <- builder
   ui <- customMain initialVty builder (Just chan) app $ UI
@@ -302,7 +303,8 @@ gameAttrMap = attrMap V.defAttr
 goToNextLevel :: EventM Name UI ()
 goToNextLevel = do
   lvl <- use $ game . level
-  g <- liftIO $ initGame True (lvl + 1)
+  playerNamePrevious <- use $ game . playerName
+  g <- liftIO $ initGame True (lvl + 1) playerNamePrevious
   game .= g
 
 exec :: BlendokuGame () -> EventM Name UI ()

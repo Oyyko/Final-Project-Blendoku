@@ -14,7 +14,7 @@ module Blendoku
     , Direction(..)
     , MazeType(..)
     , BlendokuGame
-    , level, hint, maxLevel
+    , level, hint, maxLevel, playerName
     , board, gtBoard, boardRows, boardCols, remainTime, isChallenge
     , cursorPos, chosenPos
     , color, chosen, hovered, locked
@@ -80,6 +80,7 @@ data Game = Game
   , _remainTime ::Int
   , _isChallenge :: Bool
   , _maxLevel :: Int
+  , _playerName :: String
   } deriving (Eq, Show)
 
 makeLenses ''Game
@@ -190,8 +191,8 @@ colorToNameGray x = "gray " ++ show x
 
 
 -- initialize ui^.game's state, parameters etc.
-initGame :: Bool -> Int -> IO Game
-initGame isChallenge lvl = do
+initGame :: Bool -> Int -> String -> IO Game
+initGame isChallenge lvl playerName = do
   gameType <- case lvl of
     0 -> return Line
     1 -> return Rectangle
@@ -218,6 +219,7 @@ initGame isChallenge lvl = do
       , _remainTime     = 60*5*1000      -- 5 minutes      
       , _isChallenge    = isChallenge
       , _maxLevel       = 4
+      , _playerName = playerName
     }
 
 initLineBoard :: IO (Int, Int, Board, Board)

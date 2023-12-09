@@ -29,6 +29,7 @@ library
       GameUI
       Lib
       PickGameType
+      InputPlayerName
   other-modules:
       Paths_Blendoku
   autogen-modules:
