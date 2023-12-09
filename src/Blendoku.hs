@@ -32,13 +32,12 @@ where
 
 import Control.Lens hiding (preview, op, zoom, (<|), chosen, elements)
 import Data.Map (Map)
-import Data.Map as M (fromList, toList, (!), insert, member, keys, filter, union, empty, adjust, null)
+import Data.Map as M (fromList, toList, (!), insert, member, keys, filter, union, empty, adjust, null, size)
 import Linear.V2 (V2(..))
 import Data.String (String)
 import Control.Monad.Trans.State (StateT(..), gets, evalStateT, execStateT, modify, execStateT)
 import Control.Applicative (Applicative(pure))
 import Control.Monad (when)
-import System.Random (Random(..), newStdGen, mkStdGen)
 import Data.List (sortOn)
 import Test.QuickCheck (choose, elements, generate, Gen)
 import Data.IntMap (insert)
@@ -324,24 +323,22 @@ initRandomShapeBoard :: IO (Int, Int, Board, Board)
 initRandomShapeBoard = do
   let rows = 9
       cols = 9
-      emptyBoard = generateEmptyBoard rows cols
-      boardPair = (emptyBoard, emptyBoard)
-  boardPair <- updateBoard rows cols boardPair
-  boardPair <- updateBoard rows cols boardPair
-  boardPair <- updateBoard rows cols boardPair
-  boardPair <- updateBoard rows cols boardPair
-  boardPair <- updateBoard rows cols boardPair
-  (board, gtBoard) <- updateBoard rows cols boardPair
-  -- boardPair <- updateBoard rows cols boardPair
+      gt = generateEmptyBoard rows cols
+      
+  gt <- updateBoard gt
+  gt <- updateBoard gt
+  gt <- updateBoard gt
+  gt <- updateBoard gt
 
+  let board = gt
   -- let board = addCursor (shuffleBoard board)
-  return (rows, cols, board, gtBoard)
+  return (rows, cols, board, gt)
 
 
-updateBoard :: Int -> Int -> (Board, Board) ->  IO (Board, Board)
-updateBoard _ _ (board, gtBoard) = do
+updateBoard :: Board -> IO Board
+updateBoard board = do
     word' <- generateNextValidColorWord board
-    return (insertColorWord word' board, gtBoard)
+    return (insertColorWord word' board)
 
 shuffleBoard :: Board -> Board
 shuffleBoard board = foldr M.union M.empty [shuffledRemain, lockedItems, blackItems]
@@ -403,40 +400,30 @@ validateSingle coord cell board =
   M.member coord board &&
   ((board M.! coord ^. color == cell ^. color) || (board M.! coord ^. color == (0, 0, 0)))
 
-
--- updateBoardN :: Int -> Board -> Coord -> IO Board
--- updateBoardN n board coord = do
---   if n == 1
---     then updateBoard board coord
---     else do
---       board' <- updateBoard board coord
---       nonBlackCells <- return (M.filter (\cell -> cell ^. color /= (0, 0, 0)) board')
---       coord' <- generate (elements (M.keys nonBlackCells))
---       updateBoardN (n-1) board' coord'
-
--- updateBoard :: Board -> Coord -> IO Board
--- updateBoard board coord = do
---   word' <- generateNextColorWord board coord
---   if validateWord word' board
---     then return (insertColorWord word' board)
---     else updateBoard board coord
-
 generateNextValidColorWord :: Board -> IO ColorWord
 generateNextValidColorWord board = do
-  let nonEmptyGrids = M.filter (\cell -> cell ^. color /= (0, 0, 0)) board in
-    do
-      coord <- generate (elements (M.keys nonEmptyGrids ++ [V2 1 1]))
-      word' <- generateNextColorWord coord
-      -- putStrLn (show word')
-      if validateWord word' board
-        then return word'
-        else generateNextValidColorWord board
+  let nonEmptyGrids = M.filter (\cell -> cell ^. color /= (0, 0, 0)) board
+      candidateGrids = 
+        if M.size nonEmptyGrids == 0 
+          then [V2 4 4]
+          else M.keys nonEmptyGrids
+  coord <- generate (elements candidateGrids)
+  currentColor <- if coord /= (V2 1 1) then return (board M.! coord ^. color) else generate (elements keyColorList)
+  word' <- generateNextColorWord coord currentColor
+  if validateWord word' board
+    then do {putStrLn (show coord); return word'}
+    else generateNextValidColorWord board
 
-generateNextColorWord ::  Coord -> IO ColorWord
-generateNextColorWord coord = do
+generateNextColorWord ::  Coord -> ColorVector -> IO ColorWord
+generateNextColorWord coord color = do
   n <- generate (choose (3::Int, 5))
   dir <- generate (elements [L, R, U, D])
-  c1 <- generate (elements keyColorList)
+  -- if color == (0, 0, 0)
+  --   then do
+  --     c1 <- generate (elements keyColorList)
+  --   else do
+  --     c1 <- return color
+  let c1 = color
   c2 <- generate (elements keyColorList)
   let xs = computeGradientCoords coord n dir
       ys = computeGradientCells c1 c2 n 4
