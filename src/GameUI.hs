@@ -114,6 +114,7 @@ drawGameState g =
       [
          drawPointerState g
         , if g ^.hint then drawHint g else emptyWidget
+<<<<<<< HEAD
         , if g ^.isChallenge then 
           vBox
           [
@@ -151,6 +152,12 @@ drawGameState g =
                 str "  Exit in " <+> str (show (g ^. remainTime)) <+> str "s"
               ]
             else emptyWidget
+=======
+        , if g^.isChallenge then str "Remaining Time: " <+> str (take (length (show (g ^. remainTime)) - 3) (show (g ^. remainTime))) <+> str "s" 
+            else emptyWidget
+        , if g^.isChallenge && g ^. remainTime <=30*1000 then str "Time's nearly up. Hurry up!" else emptyWidget
+        , if g^.isChallenge && g ^. level == g^.maxLevel && isGameEnd g then str "Congratulations! Challenge Completed!" else emptyWidget
+>>>>>>> main
       ]
 
 drawPointerState :: Game -> Widget n
@@ -241,7 +248,7 @@ drawRectangleWithColor color =
 -- Main Func
 playGame :: Int -> IO Game
 playGame gameType = do
-  let delay = 1000000           -- unit: microsecond (1 second = 1,000,000 microseconds)
+  let delay = 1000           -- unit: microsecond (1 second = 1,000,000 microseconds)
   chan <- newBChan 10
   void . forkIO $ forever $ do      -- 无限循环：Tick计时
     writeBChan chan Tick
@@ -284,28 +291,6 @@ handleEvent (AppEvent Tick) = do
   else do
     exec timeTickPerGame
 handleEvent _ = pure ()
-
--- other challege mode idea
--- handleEvent (AppEvent Tick) = challengeMode
--- challengeMode :: IO()
--- challengeMode = do
---   ui <- get
---   let g = ui ^. game
---   when (g^. isChallenge && g^. remainTime > 0 && isGameEnd g && g^.level<g^.maxLevel) $ do
---     newGame <- initGame (g^.level +1)
---     modify (\u -> u { _game = newGame })
---   -- when (g^. isChallenge && g^. remainTime > 0 && isGameEnd g && g^.level==g^.maxLevel) $ do
---   --   threadDelay 5*1000
---   --   halt
-
--- initNewGame :: BrickEvent Name Tick -> IO Game
--- initNewGame ev = do
---   ui <- get
---   let g = ui ^. game
---   when (g ^. isChallenge && g ^. remainTime > 0 && isGameEnd g && g ^. level < g ^. maxLevel) $ do
---     newGame <- initGame (g ^. level + 1)
---     modify (\u -> u { _game = newGame })
---   return $ ui ^. game
 
 --  support RGB/gray color
 -- for gray color, the color is from 0 to 255
