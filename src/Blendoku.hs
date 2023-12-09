@@ -334,15 +334,18 @@ initRandomShapeBoard = do
   gt <- updateBoard gt
   gt <- updateBoard gt
 
-  let board = gt
-  -- let board = addCursor (shuffleBoard board)
+  -- let board = gt
+  let board = addCursor (shuffleBoard gt)
   return (rows, cols, board, gt)
 
 
 updateBoard :: Board -> IO Board
 updateBoard board = do
     word' <- generateNextValidColorWord board
-    return (insertColorWord word' board)
+    -- set the first grid and the last grid to be locked
+    let lockedList = [fst (head word'), fst (last word')]
+    board <- return (insertColorWord word' board)
+    return (foldr (M.adjust (\cell -> cell & locked .~ True)) board lockedList)
 
 shuffleBoard :: Board -> Board
 shuffleBoard board = foldr M.union M.empty [shuffledRemain, lockedItems, blackItems]
@@ -427,6 +430,7 @@ generateNextValidColorWord board = do
   let nonEmptyGrids = M.filter (\cell -> cell ^. color /= (0, 0, 0)) board
       candidateGrids = 
         if M.size nonEmptyGrids == 0 
+          -- V2 4 4 is the start position
           then [V2 4 4]
           else M.keys nonEmptyGrids
   coord <- generate (elements candidateGrids)
