@@ -33,16 +33,16 @@ where
 
 import Control.Lens hiding (preview, op, zoom, (<|), chosen, elements)
 import Data.Map (Map)
-import Data.Map as M (fromList, toList, (!), insert, member, keys, filter, union, empty, adjust)
+import Data.Map as M (fromList, toList, (!), insert, member, keys, filter, union, empty, adjust, null, size)
 import Linear.V2 (V2(..))
 import Data.String (String)
 import Control.Monad.Trans.State (StateT(..), gets, evalStateT, execStateT, modify, execStateT)
 import Control.Applicative (Applicative(pure))
 import Control.Monad (when)
-import System.Random (Random(..), newStdGen, mkStdGen)
 import Data.List (sortOn)
 import Test.QuickCheck (choose, elements, generate, Gen)
 import Data.IntMap (insert)
+import System.Random (mkStdGen, randomRs, mkStdGen)
 
 data Direction = L | R | U | D
   deriving (Eq, Show)
@@ -153,7 +153,8 @@ timeTickPerGame :: BlendokuGame ()
 timeTickPerGame = do
   remainTime <- gets _remainTime
   -- isChallenge <- gets _isChallenge
-  -- if remainTime == 0 then pure()
+
+  if remainTime == 0 then pure ()
   --   when isChallenge halt                -- game over, implement halt in GameUI.hs, not here because Blendoku.hs only cares about logic inside one ui^.game
   if remainTime > 0 then modify $ \g -> g { _remainTime = remainTime - 1 } else pure()
 
@@ -204,7 +205,7 @@ initGame val = do
     TShape -> initTShapeBoard
     HShape -> initHShapeBoard
     RandomShape -> initRandomShapeBoard
-    Challenge -> initChallengeBoard 
+    Challenge -> initChallengeBoard
   return  Game
     {
         _level        = if val==5 then 0 else val   -- start from level 0 if challenge mode
@@ -325,29 +326,28 @@ initRandomShapeBoard :: IO (Int, Int, Board, Board)
 initRandomShapeBoard = do
   let rows = 9
       cols = 9
-      emptyBoard = generateEmptyBoard rows cols
-  startRow <- generate (choose (1::Int, rows))
-  startCol <- generate (choose (1::Int, cols))
-  let startCoord = V2 startCol startRow
-      gtBoard = emptyBoard
-  colorWord <- generateNextValidColorWord gtBoard startCoord
-  gtBoard <- return (insertColorWord colorWord gtBoard)
+      gt = generateEmptyBoard rows cols
+      
+  gt <- updateBoard gt
+  gt <- updateBoard gt
+  gt <- updateBoard gt
+  gt <- updateBoard gt
+  gt <- updateBoard gt
+  gt <- updateBoard gt
+  gt <- updateBoard gt
 
-  gtBoard <- updateBoard gtBoard
-  gtBoard <- updateBoard gtBoard
-  gtBoard <- updateBoard gtBoard
-  gtBoard <- updateBoard gtBoard
-
-  let board = addCursor (shuffleBoard gtBoard)
-  return (rows, cols, gtBoard, gtBoard)
+  -- let board = gt
+  let board = addCursor (shuffleBoard gt)
+  return (rows, cols, board, gt)
 
 
-updateBoard :: Board ->  IO Board
+updateBoard :: Board -> IO Board
 updateBoard board = do
-  nonEmptyGrids <- return (M.filter (\cell -> cell ^. color /= (0, 0, 0)) board)
-  coord' <- generate (elements (M.keys nonEmptyGrids))
-  word' <- generateNextValidColorWord board coord'
-  return (insertColorWord word' board)
+    word' <- generateNextValidColorWord board
+    -- set the first grid and the last grid to be locked
+    let lockedList = [fst (head word'), fst (last word')]
+    board <- return (insertColorWord word' board)
+    return (foldr (M.adjust (\cell -> cell & locked .~ True)) board lockedList)
 
 shuffleBoard :: Board -> Board
 shuffleBoard board = foldr M.union M.empty [shuffledRemain, lockedItems, blackItems]
@@ -366,9 +366,9 @@ generateEmptyBoard row col = M.fromList $ zip xs ys
 computeGradientCoords :: Coord -> Int -> Direction -> [Coord]
 computeGradientCoords coord n dir =
   case dir of
-    L ->  [V2 x y | x <- [x0 - n .. x0], y <- [y0]]
+    L ->  reverse [V2 x y | x <- [x0 - n .. x0], y <- [y0]]
     R ->  [V2 x y | x <- [x0 .. x0 + n], y <- [y0]]
-    U ->  [V2 x y | x <- [x0], y <- [y0 - n .. y0]]
+    U ->  reverse [V2 x y | x <- [x0], y <- [y0 - n .. y0]]
     D ->  [V2 x y | x <- [x0], y <- [y0 .. y0 + n]]
   where (V2 x0 y0) = coord
 
@@ -402,50 +402,60 @@ keyColorList = shuffle (tail [ (r, g, b) | r <- [0, 32..255], g <- [0, 32..255],
 
 validateWord :: ColorWord -> Board -> Bool
 validateWord word board =
-  all (\(k, v) -> validateSingle k v board) word
+  all (\(k, v) -> validateSingle k v board word) word &&
+  -- for beforeFirst and afterLast, either they are not on board, or they are on board and are black
+  (not (beforeFirstCoord `M.member` board) || (board M.! beforeFirstCoord ^. color == (0, 0, 0))) &&
+  (not (afterLastCoord `M.member` board) || (board M.! afterLastCoord ^. color == (0, 0, 0)))
+  where 
+    firstCoord = fst (head word)
+    sndCoord = fst (head (tail word))
+    diff = sndCoord - firstCoord
+    beforeFirstCoord = firstCoord - diff
+    lastCoord = fst (last word)
+    lastButTwo = fst (word !! (length word - 2))
+    afterLastCoord = lastCoord + (lastCoord - lastButTwo)
 
-validateSingle :: Coord -> Cell -> Board -> Bool
-validateSingle coord cell board =
+validateSingle :: Coord -> Cell -> Board -> ColorWord -> Bool
+validateSingle coord cell board word =
   M.member coord board &&
-  ((board M.! coord ^. color == cell ^. color) || (board M.! coord ^. color == (0, 0, 0)))
+  -- ((board M.! coord ^. color == cell ^. color) || (board M.! coord ^. color == (0, 0, 0))) 
+  ((board M.! coord ^. color == cell ^. color) || (board M.! coord ^. color == (0, 0, 0) && neighborsNotIn)) 
+  where
+    fourNeighbors = [V2 (x+1) y, V2 (x-1) y, V2 x (y-1), V2 x (y+1)]
+    V2 x y = coord
+    neighborsNotIn = all (\c -> not (M.member c board) || neighborInWord c || (board M.! c ^. color == (0, 0, 0))) fourNeighbors
+    neighborInWord c = c `elem` map fst word
 
 
--- updateBoardN :: Int -> Board -> Coord -> IO Board
--- updateBoardN n board coord = do
---   if n == 1
---     then updateBoard board coord
---     else do
---       board' <- updateBoard board coord
---       nonBlackCells <- return (M.filter (\cell -> cell ^. color /= (0, 0, 0)) board')
---       coord' <- generate (elements (M.keys nonBlackCells))
---       updateBoardN (n-1) board' coord'
-
--- updateBoard :: Board -> Coord -> IO Board
--- updateBoard board coord = do
---   word' <- generateNextColorWord board coord
---   if validateWord word' board
---     then return (insertColorWord word' board)
---     else updateBoard board coord
-
-generateNextValidColorWord :: Board -> Coord -> IO ColorWord
-generateNextValidColorWord board coord = do
-  word' <- generateNextColorWord coord
+generateNextValidColorWord :: Board -> IO ColorWord
+generateNextValidColorWord board = do
+  let nonEmptyGrids = M.filter (\cell -> cell ^. color /= (0, 0, 0)) board
+      candidateGrids = 
+        if M.size nonEmptyGrids == 0 
+          -- V2 4 4 is the start position
+          then [V2 4 4]
+          else M.keys nonEmptyGrids
+  coord <- generate (elements candidateGrids)
+  currentColor <- if coord /= (V2 4 4) then return (board M.! coord ^. color) else generate (elements keyColorList)
+  word' <- generateNextColorWord coord currentColor
+  -- putStrLn ("try" ++ show word')
   if validateWord word' board
+    -- then do {putStrLn (show coord); putStrLn (show word'); putStrLn (show board); return word'}
     then return word'
-    else generateNextValidColorWord board coord
+    else generateNextValidColorWord board
 
-generateNextColorWord ::  Coord -> IO ColorWord
-generateNextColorWord coord = do
+generateNextColorWord ::  Coord -> ColorVector -> IO ColorWord
+generateNextColorWord coord color = do
   n <- generate (choose (3::Int, 5))
   dir <- generate (elements [L, R, U, D])
-  c1 <- generate (elements keyColorList)
+  let c1 = color
   c2 <- generate (elements keyColorList)
   let xs = computeGradientCoords coord n dir
       ys = computeGradientCells c1 c2 n 4
   return (zip xs ys)
 
 initChallengeBoard :: IO (Int, Int, Board, Board)
-initChallengeBoard = do 
+initChallengeBoard = do
   level <- generate (choose (0::Int, 4))
   case level `mod` 4 of
     0 -> initLineBoard

@@ -174,8 +174,8 @@ drawHint g =
 cellToWidget :: Cell -> Bool -> Widget n
 cellToWidget cell endOfGame
   | endOfGame = drawRectangleWithColor (cell ^. color)
-  | cell ^. chosen = drawRectangleWithAttr "chosen"
-  | cell ^. hovered = drawRectangleWithAttr "hover"
+  | cell ^. chosen = drawRectangleWithAttr (cell ^. color) "chosen"
+  | cell ^. hovered = drawRectangleWithAttr (cell ^. color) "hover"
   | otherwise = drawRectangleWithColor (cell ^. color)
 
 emptyWidgetMap :: Int -> Int -> Map Coord (Widget n)
@@ -185,12 +185,13 @@ emptyWidgetMap rows cols = M.fromList
 emptyGridW :: Widget n
 emptyGridW = padLeft (Pad 1) $ drawRectangleWithColor (254, 254, 254)
 
-drawRectangleWithAttr :: String -> Widget n
-drawRectangleWithAttr name =
+drawRectangleWithAttr :: ColorVector ->String -> Widget n
+drawRectangleWithAttr color name =
+  let char = if name == "chosen" then "◼︎" else "◻︎" in
     vBox
   [
-      withAttr (attrName name) (str "     ")
-   ,  withAttr (attrName name) (str "     ")
+      withAttr (attrName (colorToNameRGB color)) (str (" " ++ char ++ " " ++ char ++ " "))
+    ,  withAttr (attrName (colorToNameRGB color)) (str (" " ++ char ++ " " ++ char ++ " "))
        ]
 
 drawRectangleWithColor :: ColorVector -> Widget n
@@ -263,7 +264,7 @@ gameAttrMap :: AttrMap
 gameAttrMap = attrMap V.defAttr
     ([(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]]
     ++ [(attrName (colorToNameRGB (r, g, b)), bg (V.RGBColor (fromIntegral r) (fromIntegral g) (fromIntegral b))) | r <- [0, 4..255], g <- [0, 4..255], b <- [0, 4..255]]
-    ++ [(attrName "chosen", bg V.blue), (attrName "hover", bg V.cyan), (attrName "locked", bg V.red)])
+    )
 
 exec :: BlendokuGame () -> EventM Name UI ()
 exec op =
