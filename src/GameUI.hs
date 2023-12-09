@@ -114,7 +114,6 @@ drawGameState g =
       [
          drawPointerState g
         , if g ^.hint then drawHint g else emptyWidget
-<<<<<<< HEAD
         , if g ^.isChallenge then 
           vBox
           [
@@ -126,16 +125,16 @@ drawGameState g =
                   [
                     str "  Congratulations!",
                     str "  Blendoku Master!",
-                    str "  Exit in " <+> str (show (g ^. remainTime)) <+> str "s"
+                    str "  Exit in " <+> str (show (getRemainTimeInSec g)) <+> str "s"
                   ]
                   else vBox
                   [
                     str "  Level Completed!",
-                    str "  Next level in " <+> str (show (g ^. remainTime)) <+> str "s" 
+                    str "  Next level in " <+> str (show (getRemainTimeInSec g)) <+> str "s" 
                   ]
               else vBox
                 [
-                  str "  Remaining Time: " <+> str (show (g ^. remainTime)) <+> str "s",
+                  str "  Remaining Time: " <+> str (show (getRemainTimeInSec g)) <+> str "s",
                   if g ^. remainTime <=30 
                     then vBox 
                     [
@@ -149,16 +148,14 @@ drawGameState g =
             then vBox
               [
                 str "  Game Completed!",
-                str "  Exit in " <+> str (show (g ^. remainTime)) <+> str "s"
+                str "  Exit in " <+> str (show (getRemainTimeInSec g)) <+> str "s"
               ]
             else emptyWidget
-=======
-        , if g^.isChallenge then str "Remaining Time: " <+> str (take (length (show (g ^. remainTime)) - 3) (show (g ^. remainTime))) <+> str "s" 
-            else emptyWidget
-        , if g^.isChallenge && g ^. remainTime <=30*1000 then str "Time's nearly up. Hurry up!" else emptyWidget
-        , if g^.isChallenge && g ^. level == g^.maxLevel && isGameEnd g then str "Congratulations! Challenge Completed!" else emptyWidget
->>>>>>> main
       ]
+
+
+getRemainTimeInSec :: Game -> Int
+getRemainTimeInSec g = g ^. remainTime `div` timeScale
 
 drawPointerState :: Game -> Widget n
 drawPointerState g =
@@ -279,8 +276,8 @@ handleEvent (AppEvent Tick) = do
   g <- use game
   if isGameEnd g then do
     x <- use $ game . remainTime
-    if x > 10 then do
-      game . remainTime .= 10
+    if x > 10 * timeScale then do
+      game . remainTime .= 10 * timeScale
     else
       if x > 0 then do
         game . remainTime -= 1
@@ -353,7 +350,8 @@ countEqual g = length $ filter (uncurry (==)) (zip xs ys)
     ys = f (g ^. gtBoard)
     f b = sort (map (\(k, Cell c _ _ _) -> (k, c)) (M.toList b))
 
-
+timeScale :: Int
+timeScale = 1000
 
 
 
