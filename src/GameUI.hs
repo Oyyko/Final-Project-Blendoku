@@ -16,6 +16,7 @@ import qualified Brick.Widgets.Border as B
 import qualified Brick.Widgets.Border.Style as BS
 import Control.Concurrent (threadDelay, forkIO)
 import Control.Monad (void, forever, when)
+import Control.Monad.IO.Class (liftIO, MonadIO)
 import qualified Graphics.Vty as V
 import Linear.V2 (V2(..))
 import Data.Map as M (Map, filterWithKey, fromList, toList, elems, size, (!))
@@ -105,7 +106,7 @@ drawBoardPlay board endOfGame = M.fromList
 
 drawGameState :: Game -> Widget Name
 drawGameState g =
-    let title = if isGameEnd g then "Game Completed" else "Game In Progress" in
+    let title = if g ^.isChallenge then "Challenge Mode" else "Normal Mode" in
     B.borderWithLabel (str title)
     $ hLimit 25
     $ padTopBottom 1
@@ -113,9 +114,43 @@ drawGameState g =
       [
          drawPointerState g
         , if g ^.hint then drawHint g else emptyWidget
-        , if g^.isChallenge then str "Remaining Time: " <+> str (show (g ^. remainTime)) <+> str "s" else emptyWidget
-        , if g^.isChallenge && g ^. remainTime <=30 then str "Time's nearly up! Challenge will fail if not completed in time!" else emptyWidget
-        , if g^.isChallenge && g ^. level == g^.maxLevel && isGameEnd g then str "Congratulations! Challenge Completed!" else emptyWidget
+        , if g ^.isChallenge then 
+          vBox
+          [
+             str "  Level: " <+> str (show (g ^. level)) <+> str "/" <+> str (show (g ^. maxLevel))
+            , if isGameEnd g 
+              then 
+                if g ^. level == g ^. maxLevel 
+                  then vBox
+                  [
+                    str "  Congratulations!",
+                    str "  Blendoku Master!",
+                    str "  Exit in " <+> str (show (g ^. remainTime)) <+> str "s"
+                  ]
+                  else vBox
+                  [
+                    str "  Level Completed!",
+                    str "  Next level in " <+> str (show (g ^. remainTime)) <+> str "s" 
+                  ]
+              else vBox
+                [
+                  str "  Remaining Time: " <+> str (show (g ^. remainTime)) <+> str "s",
+                  if g ^. remainTime <=30 
+                    then vBox 
+                    [
+                      str "  Time's nearly up!",
+                      str "Challenge will fail if not completed in time!" 
+                    ]
+                    else emptyWidget
+                ]
+          ]
+          else if isGameEnd g 
+            then vBox
+              [
+                str "  Game Completed!",
+                str "  Exit in " <+> str (show (g ^. remainTime)) <+> str "s"
+              ]
+            else emptyWidget
       ]
 
 drawPointerState :: Game -> Widget n
@@ -211,7 +246,8 @@ playGame gameType = do
   void . forkIO $ forever $ do      -- 无限循环：Tick计时
     writeBChan chan Tick
     threadDelay delay
-  initialGame <- initGame gameType
+  (lvl, isChallenge) <- if gameType == 5 then return (0, True) else return (gameType, False)
+  initialGame <- initGame isChallenge lvl
   let builder = V.mkVty V.defaultConfig
   initialVty <- builder
   ui <- customMain initialVty builder (Just chan) app $ UI
@@ -225,13 +261,28 @@ handleEvent (VtyEvent (V.EvKey (V.KChar ' ') [])) = exec (toggleSelection)
 handleEvent (VtyEvent (V.EvKey V.KEnter      [])) = exec (swapWithChosen)
 handleEvent (VtyEvent (V.EvKey (V.KChar 'h') [])) = exec (toggleHint)
 -- handleEvent (VtyEvent (V.EvKey (V.KChar 'l') [])) = exec (toggleLock)
+-- handleEvent (VtyEvent (V.EvKey (V.KChar 'n') [])) = goToNextLevel
 handleEvent (VtyEvent (V.EvKey V.KRight      [])) = exec (shift R)
 handleEvent (VtyEvent (V.EvKey V.KLeft       [])) = exec (shift L)
 handleEvent (VtyEvent (V.EvKey V.KDown       [])) = exec (shift D)
 handleEvent (VtyEvent (V.EvKey V.KUp         [])) = exec (shift U)
 handleEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
 handleEvent (VtyEvent (V.EvKey V.KEsc        [])) = halt
-handleEvent (AppEvent Tick) = exec timeTickPerGame
+handleEvent (AppEvent Tick) = do
+  g <- use game
+  if isGameEnd g then do
+    x <- use $ game . remainTime
+    if x > 10 then do
+      game . remainTime .= 10
+    else
+      if x > 0 then do
+        game . remainTime -= 1
+      else
+        if g ^.isChallenge && g ^. level < g ^. maxLevel 
+          then goToNextLevel
+          else halt
+  else do
+    exec timeTickPerGame
 handleEvent _ = pure ()
 
 -- other challege mode idea
@@ -265,6 +316,12 @@ gameAttrMap = attrMap V.defAttr
     ([(attrName (colorToNameGray val), bg (V.RGBColor (fromIntegral val) (fromIntegral val) (fromIntegral val))) | val <- [0..255]]
     ++ [(attrName (colorToNameRGB (r, g, b)), bg (V.RGBColor (fromIntegral r) (fromIntegral g) (fromIntegral b))) | r <- [0, 4..255], g <- [0, 4..255], b <- [0, 4..255]]
     )
+
+goToNextLevel :: EventM Name UI ()
+goToNextLevel = do
+  lvl <- use $ game . level
+  g <- liftIO $ initGame True (lvl + 1)
+  game .= g
 
 exec :: BlendokuGame () -> EventM Name UI ()
 exec op =
