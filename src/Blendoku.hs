@@ -156,7 +156,7 @@ timeTickPerGame = do
 
   -- if remainTime == 0 then pure ()
   --   when isChallenge halt                -- game over, implement halt in GameUI.hs, not here because Blendoku.hs only cares about logic inside one ui^.game
-  if remainTime > 0 then modify $ \g -> g { _remainTime = remainTime - 2 } else pure()
+  if remainTime > 0 then modify $ \g -> g { _remainTime = remainTime - 1 } else pure()
 
 updateCursor :: Coord -> Direction -> Coord
 updateCursor (V2 x y) dir = case dir of
@@ -190,25 +190,23 @@ colorToNameGray x = "gray " ++ show x
 
 
 -- initialize ui^.game's state, parameters etc.
-initGame :: Int -> IO Game
-initGame val = do
-  gameType <- case val of
+initGame :: Bool -> Int -> IO Game
+initGame isChallenge lvl = do
+  gameType <- case lvl of
     0 -> return Line
     1 -> return Rectangle
     2 -> return TShape
     3 -> return HShape
     4 -> return RandomShape
-    5 -> return Challenge
   (rows, cols, board, gtBoard) <- case gameType of
     Line -> initLineBoard
     Rectangle -> initRectangleBoard
     TShape -> initTShapeBoard
     HShape -> initHShapeBoard
     RandomShape -> initRandomShapeBoard
-    Challenge -> initChallengeBoard
   return  Game
     {
-        _level        = if val==5 then 0 else val   -- start from level 0 if challenge mode
+        _level        = lvl 
       , _board          = board
       , _gtBoard        = gtBoard
       , _cursorPos       = V2 1 1
@@ -218,7 +216,7 @@ initGame val = do
       , _boardRows       = rows
       , _boardCols       = cols
       , _remainTime     = 60*5*1000      -- 5 minutes      
-      , _isChallenge    = val == 5
+      , _isChallenge    = isChallenge
       , _maxLevel       = 4
     }
 
@@ -456,13 +454,7 @@ generateNextColorWord coord color = do
 
 initChallengeBoard :: IO (Int, Int, Board, Board)
 initChallengeBoard = do
-  level <- generate (choose (0::Int, 4))
-  case level `mod` 4 of
-    0 -> initLineBoard
-    1 -> initRectangleBoard
-    2 -> initTShapeBoard
-    3 -> initHShapeBoard
-    4 -> initRandomShapeBoard
+  initLineBoard
 
 -- Challenge mode: advance to next level
 -- nextLevel :: Game -> IO Game
