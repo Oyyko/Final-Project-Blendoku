@@ -41,6 +41,7 @@ import Control.Monad (when)
 import Data.List (sortOn)
 import Test.QuickCheck (choose, elements, generate, Gen)
 import Data.IntMap (insert)
+import System.Random (mkStdGen, randomRs, mkStdGen)
 
 data Direction = L | R | U | D
   deriving (Eq, Show)
@@ -357,9 +358,9 @@ generateEmptyBoard row col = M.fromList $ zip xs ys
 computeGradientCoords :: Coord -> Int -> Direction -> [Coord]
 computeGradientCoords coord n dir =
   case dir of
-    L ->  [V2 x y | x <- [x0 - n .. x0], y <- [y0]]
+    L ->  reverse [V2 x y | x <- [x0 - n .. x0], y <- [y0]]
     R ->  [V2 x y | x <- [x0 .. x0 + n], y <- [y0]]
-    U ->  [V2 x y | x <- [x0], y <- [y0 - n .. y0]]
+    U ->  reverse [V2 x y | x <- [x0], y <- [y0 - n .. y0]]
     D ->  [V2 x y | x <- [x0], y <- [y0 .. y0 + n]]
   where (V2 x0 y0) = coord
 
@@ -408,10 +409,10 @@ generateNextValidColorWord board = do
           then [V2 4 4]
           else M.keys nonEmptyGrids
   coord <- generate (elements candidateGrids)
-  currentColor <- if coord /= (V2 1 1) then return (board M.! coord ^. color) else generate (elements keyColorList)
+  currentColor <- if coord /= (V2 4 4) then return (board M.! coord ^. color) else generate (elements keyColorList)
   word' <- generateNextColorWord coord currentColor
   if validateWord word' board
-    then do {putStrLn (show coord); return word'}
+    then do {putStrLn (show coord); putStrLn (show word'); return word'}
     else generateNextValidColorWord board
 
 generateNextColorWord ::  Coord -> ColorVector -> IO ColorWord
