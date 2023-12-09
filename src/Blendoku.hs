@@ -330,6 +330,9 @@ initRandomShapeBoard = do
   gt <- updateBoard gt
   gt <- updateBoard gt
   gt <- updateBoard gt
+  gt <- updateBoard gt
+  gt <- updateBoard gt
+  gt <- updateBoard gt
 
   let board = gt
   -- let board = addCursor (shuffleBoard board)
@@ -394,12 +397,30 @@ keyColorList = shuffle (tail [ (r, g, b) | r <- [0, 32..255], g <- [0, 32..255],
 
 validateWord :: ColorWord -> Board -> Bool
 validateWord word board =
-  all (\(k, v) -> validateSingle k v board) word
+  all (\(k, v) -> validateSingle k v board word) word &&
+  -- for beforeFirst and afterLast, either they are not on board, or they are on board and are black
+  (not (beforeFirstCoord `M.member` board) || (board M.! beforeFirstCoord ^. color == (0, 0, 0))) &&
+  (not (afterLastCoord `M.member` board) || (board M.! afterLastCoord ^. color == (0, 0, 0)))
+  where 
+    firstCoord = fst (head word)
+    sndCoord = fst (head (tail word))
+    diff = sndCoord - firstCoord
+    beforeFirstCoord = firstCoord - diff
+    lastCoord = fst (last word)
+    lastButTwo = fst (word !! (length word - 2))
+    afterLastCoord = lastCoord + (lastCoord - lastButTwo)
 
-validateSingle :: Coord -> Cell -> Board -> Bool
-validateSingle coord cell board =
+validateSingle :: Coord -> Cell -> Board -> ColorWord -> Bool
+validateSingle coord cell board word =
   M.member coord board &&
-  ((board M.! coord ^. color == cell ^. color) || (board M.! coord ^. color == (0, 0, 0)))
+  -- ((board M.! coord ^. color == cell ^. color) || (board M.! coord ^. color == (0, 0, 0))) 
+  ((board M.! coord ^. color == cell ^. color) || (board M.! coord ^. color == (0, 0, 0) && neighborsNotIn)) 
+  where
+    fourNeighbors = [V2 (x+1) y, V2 (x-1) y, V2 x (y-1), V2 x (y+1)]
+    V2 x y = coord
+    neighborsNotIn = all (\c -> not (M.member c board) || neighborInWord c || (board M.! c ^. color == (0, 0, 0))) fourNeighbors
+    neighborInWord c = c `elem` map fst word
+
 
 generateNextValidColorWord :: Board -> IO ColorWord
 generateNextValidColorWord board = do
@@ -411,19 +432,16 @@ generateNextValidColorWord board = do
   coord <- generate (elements candidateGrids)
   currentColor <- if coord /= (V2 4 4) then return (board M.! coord ^. color) else generate (elements keyColorList)
   word' <- generateNextColorWord coord currentColor
+  -- putStrLn ("try" ++ show word')
   if validateWord word' board
-    then do {putStrLn (show coord); putStrLn (show word'); return word'}
+    -- then do {putStrLn (show coord); putStrLn (show word'); putStrLn (show board); return word'}
+    then return word'
     else generateNextValidColorWord board
 
 generateNextColorWord ::  Coord -> ColorVector -> IO ColorWord
 generateNextColorWord coord color = do
   n <- generate (choose (3::Int, 5))
   dir <- generate (elements [L, R, U, D])
-  -- if color == (0, 0, 0)
-  --   then do
-  --     c1 <- generate (elements keyColorList)
-  --   else do
-  --     c1 <- return color
   let c1 = color
   c2 <- generate (elements keyColorList)
   let xs = computeGradientCoords coord n dir
