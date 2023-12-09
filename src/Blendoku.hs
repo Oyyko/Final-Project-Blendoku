@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RankNTypes #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Blendoku
 (
     initGame
@@ -152,9 +153,10 @@ timeTickPerGame :: BlendokuGame ()
 timeTickPerGame = do
   remainTime <- gets _remainTime
   -- isChallenge <- gets _isChallenge
+
   if remainTime == 0 then pure ()
   --   when isChallenge halt                -- game over, implement halt in GameUI.hs, not here because Blendoku.hs only cares about logic inside one ui^.game
-  else modify $ \g -> g { _remainTime = remainTime - 1 }
+  if remainTime > 0 then modify $ \g -> g { _remainTime = remainTime - 1 } else pure()
 
 updateCursor :: Coord -> Direction -> Coord
 updateCursor (V2 x y) dir = case dir of
