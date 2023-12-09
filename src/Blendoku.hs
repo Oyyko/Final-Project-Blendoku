@@ -156,7 +156,7 @@ timeTickPerGame = do
 
   -- if remainTime == 0 then pure ()
   --   when isChallenge halt                -- game over, implement halt in GameUI.hs, not here because Blendoku.hs only cares about logic inside one ui^.game
-  if remainTime > 0 then modify $ \g -> g { _remainTime = remainTime - 1 } else pure()
+  if remainTime > 0 then modify $ \g -> g { _remainTime = remainTime - 2 } else pure()
 
 updateCursor :: Coord -> Direction -> Coord
 updateCursor (V2 x y) dir = case dir of
@@ -217,7 +217,7 @@ initGame val = do
       , _hint            = False
       , _boardRows       = rows
       , _boardCols       = cols
-      , _remainTime     = 60*5      -- 5 minutes      
+      , _remainTime     = 60*5*1000      -- 5 minutes      
       , _isChallenge    = val == 5
       , _maxLevel       = 4
     }
