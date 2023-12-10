@@ -30,7 +30,15 @@ ui ed =
               withBorderStyle unicodeBold $
                 borderWithLabel (str "Blendoku") $
                   center $
-                    renderEditor (str . unlines) True ed
+                  vBox $
+                    [
+                      str "Type your name\n",
+                      borderWithLabel(str "Player Name") $ vBox $
+                      [
+                        renderEditor (str . unlines) True ed
+                      ],
+                      str "then press enter continue:"
+                    ]
   ]
 
 handleEvent :: BrickEvent () e -> EventM () (Editor String ()) ()
@@ -41,4 +49,4 @@ handleEvent (VtyEvent (EvKey (KEnter) _)) = halt
 handleEvent ev = handleEditorEvent ev
 
 inputPlayerName :: IO [String]
-inputPlayerName = defaultMain app (editor () (Just 1) "YourName") >>= \x -> return $ getEditContents x
+inputPlayerName = defaultMain app (editor () (Just 1) "") >>= \x -> return $ getEditContents x
