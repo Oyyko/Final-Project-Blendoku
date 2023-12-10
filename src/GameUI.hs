@@ -137,13 +137,21 @@ drawGameState g =
               else vBox
                 [
                   str "  Remaining Time: " <+> str (show (getRemainTimeInSec g)) <+> str "s",
-                  if g ^. remainTime <=30 
+                  if g ^. remainTime <=30*timeScale && g ^. remainTime>0
                     then vBox 
                     [
                       str "  Time's nearly up!",
-                      str "Challenge will fail if not completed in time!" 
+                      str "  Hurry up, otherwise",
+                      str "  challenge will fail!" 
                     ]
-                    else emptyWidget
+                  else if  g ^. remainTime==0
+                    then vBox
+                    [
+                      str "  Time's up!",
+                      str "  Challenge failed!",
+                      str "  Press 'q' to exit." 
+                    ]
+                  else emptyWidget
                 ]
           ]
           else if isGameEnd g 
@@ -364,9 +372,5 @@ countEqual g = length $ filter (uncurry (==)) (zip xs ys)
     xs = f (g ^.board )
     ys = f (g ^. gtBoard)
     f b = sort (map (\(k, Cell c _ _ _) -> (k, c)) (M.toList b))
-
-timeScale :: Int
-timeScale = 1000
-
 
 
