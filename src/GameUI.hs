@@ -251,7 +251,7 @@ drawRectangleWithColor grayMode color =
 bgrToGray :: ColorVector -> ColorVector
 bgrToGray (r, g, b) = (v', v', v')
   where
-    v' = (round v) `div` 32 * 32
+    v' = (round v) `div` 4 * 4
     v  = 0.299 * fromIntegral r + 0.587 * fromIntegral g + 0.114 * fromIntegral b 
 
 
