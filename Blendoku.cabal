@@ -27,6 +27,7 @@ library
   exposed-modules:
       Blendoku
       GameUI
+      InputPlayerName
       Lib
       PickGameType
   other-modules:
@@ -89,6 +90,8 @@ test-suite Blendoku-test
     , lens
     , linear
     , random
+    , tasty
+    , tasty-hunit
     , transformers
     , vty
   default-language: Haskell2010

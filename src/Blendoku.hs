@@ -14,7 +14,7 @@ module Blendoku
     , Direction(..)
     , MazeType(..)
     , BlendokuGame
-    , level, hint, maxLevel
+    , level, hint, maxLevel, playerName, isGray
     , board, gtBoard, boardRows, boardCols, remainTime, isChallenge
     , cursorPos, chosenPos
     , color, chosen, hovered, locked
@@ -24,6 +24,7 @@ module Blendoku
     , toggleSelection
     , toggleHint
     , toggleLock
+    , toggleGray
     , timeTickPerGame
     , swapWithChosen
     , execBlendokuGame
@@ -87,6 +88,8 @@ data Game = Game
   , _remainTime ::Int
   , _isChallenge :: Bool
   , _maxLevel :: Int
+  , _playerName :: String
+  , _isGray :: Bool
   } deriving (Eq, Show)
 
 makeLenses ''Game
@@ -144,6 +147,10 @@ toggleLock = do
       board' = M.insert cursorPos cell' board
   modify $ \g -> g { _board = board' }
 
+toggleGray :: BlendokuGame ()
+toggleGray = do
+  modify $ \g -> g { _isGray = not (_isGray g) }
+
 shift :: Direction -> BlendokuGame ()
 shift dir = do
   cursor <- gets _cursorPos
@@ -163,7 +170,7 @@ timeTickPerGame = do
 
   -- if remainTime == 0 then pure ()
   --   when isChallenge halt                -- game over, implement halt in GameUI.hs, not here because Blendoku.hs only cares about logic inside one ui^.game
-  if remainTime > 0 then modify $ \g -> g { _remainTime = remainTime - 2 } else pure()
+  if remainTime > 0 then modify $ \g -> g { _remainTime = remainTime - 1 } else pure()
 
 updateCursor :: Coord -> Direction -> Coord
 updateCursor (V2 x y) dir = case dir of
@@ -197,25 +204,23 @@ colorToNameGray x = "gray " ++ show x
 
 
 -- initialize ui^.game's state, parameters etc.
-initGame :: Int -> IO Game
-initGame val = do
-  gameType <- case val of
+initGame :: Bool -> Int -> String -> IO Game
+initGame isChallenge lvl playerName = do
+  gameType <- case lvl of
     0 -> return Line
     1 -> return Rectangle
     2 -> return TShape
     3 -> return HShape
     4 -> return RandomShape
-    5 -> return Challenge
   (rows, cols, board, gtBoard) <- case gameType of
     Line -> initLineBoard
     Rectangle -> initRectangleBoard
     TShape -> initTShapeBoard
     HShape -> initHShapeBoard
     RandomShape -> initRandomShapeBoard
-    Challenge -> initChallengeBoard
   return  Game
     {
-        _level        = if val==5 then 0 else val   -- start from level 0 if challenge mode
+        _level        = lvl 
       , _board          = board
       , _gtBoard        = gtBoard
       , _cursorPos       = V2 1 1
@@ -227,6 +232,8 @@ initGame val = do
       , _remainTime     = 60*5*timeScale     -- 5 minutes      
       , _isChallenge    = isChallenge
       , _maxLevel       = 4
+      , _playerName = playerName
+      , _isGray = False
     }
 
 initLineBoard :: IO (Int, Int, Board, Board)
@@ -373,10 +380,10 @@ generateEmptyBoard row col = M.fromList $ zip xs ys
 computeGradientCoords :: Coord -> Int -> Direction -> [Coord]
 computeGradientCoords coord n dir =
   case dir of
-    L ->  reverse [V2 x y | x <- [x0 - n .. x0], y <- [y0]]
-    R ->  [V2 x y | x <- [x0 .. x0 + n], y <- [y0]]
-    U ->  reverse [V2 x y | x <- [x0], y <- [y0 - n .. y0]]
-    D ->  [V2 x y | x <- [x0], y <- [y0 .. y0 + n]]
+    L ->  reverse [V2 x y | x <- [x0 - n + 1 .. x0], y <- [y0]]
+    R ->  [V2 x y | x <- [x0 .. x0 + n - 1], y <- [y0]]
+    U ->  reverse [V2 x y | x <- [x0], y <- [y0 - n + 1 .. y0]]
+    D ->  [V2 x y | x <- [x0], y <- [y0 .. y0 + n - 1]]
   where (V2 x0 y0) = coord
 
 -- we want to keep the first and the last cell the same while generating the gradient
@@ -387,11 +394,11 @@ computeGradientCells (r1, g1, b1) (r2, g2, b2) n scale =
       last = (r2, g2, b2)
       scaledFirst = (r1 `div` scale, g1 `div` scale, b1 `div` scale)
       scaledLast = (r2 `div` scale, g2 `div` scale, b2 `div` scale)
-      gradient = map (\(r, g, b) ->  (r * scale, g * scale, b * scale)) (generateGradient scaledFirst scaledLast (n-2))
+      gradient = map (\(r, g, b) ->  (r * scale, g * scale, b * scale)) (generateGradient scaledFirst scaledLast n)
   in map (\c -> Cell c False False False) ([first] ++ gradient ++ [last])
   where
         generateGradient (r1, g1, b1) (r2, g2, b2) n = zip3 (generateGradient' r1 r2 n) (generateGradient' g1 g2 n) (generateGradient' b1 b2 n)
-        generateGradient' start end n = map (\x -> x * (end - start) `div` (n+1) + start) [1..n]
+        generateGradient' start end n = map (\x -> x * (end - start) `div` (n-1) + start) [1..n-2]
 
 insertColorWord :: ColorWord -> Board -> Board
 insertColorWord word board = foldl (\b (k, v) -> M.insert k v b) board word
@@ -463,13 +470,7 @@ generateNextColorWord coord color = do
 
 initChallengeBoard :: IO (Int, Int, Board, Board)
 initChallengeBoard = do
-  level <- generate (choose (0::Int, 4))
-  case level `mod` 4 of
-    0 -> initLineBoard
-    1 -> initRectangleBoard
-    2 -> initTShapeBoard
-    3 -> initHShapeBoard
-    4 -> initRandomShapeBoard
+  initLineBoard
 
 -- Challenge mode: advance to next level
 -- nextLevel :: Game -> IO Game
