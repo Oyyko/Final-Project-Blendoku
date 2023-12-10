@@ -373,7 +373,4 @@ countEqual g = length $ filter (uncurry (==)) (zip xs ys)
     ys = f (g ^. gtBoard)
     f b = sort (map (\(k, Cell c _ _ _) -> (k, c)) (M.toList b))
 
-timeScale :: Int
-timeScale = 1000
-
 
