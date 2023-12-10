@@ -30,14 +30,13 @@ ui ed =
               withBorderStyle unicodeBold $
                 borderWithLabel (str "Blendoku") $
                   center $
-                  vBox $
-                    [
-                      str "Type your name\n",
-                      borderWithLabel(str "Player Name") $ vBox $
+                  vBox [
+                      str "Type your name:\n",
+                      borderWithLabel (str "Player Name") $ vBox $
                       [
                         renderEditor (str . unlines) True ed
                       ],
-                      str "then press enter continue:"
+                      str "Press 'Enter' to continue"
                     ]
   ]
 
