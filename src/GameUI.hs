@@ -113,7 +113,50 @@ drawGameState g =
       [
          drawPointerState g
         , if g ^.hint then drawHint g else emptyWidget
-        , if g^.isChallenge then str "Remaining Time: " <+> str (take (length (show (g ^. remainTime)) - 3) (show (g ^. remainTime))) <+> str "s" 
+        , if g ^.isChallenge then 
+          vBox
+          [
+             str "  Level: " <+> str (show (g ^. level)) <+> str "/" <+> str (show (g ^. maxLevel))
+            , if isGameEnd g 
+              then 
+                if g ^. level == g ^. maxLevel 
+                  then vBox
+                  [
+                    str "  Congratulations!",
+                    str "  Blendoku Master!",
+                    str "  Exit in " <+> str (show (getRemainTimeInSec g)) <+> str "s"
+                  ]
+                  else vBox
+                  [
+                    str "  Level Completed!",
+                    str "  Next level in " <+> str (show (getRemainTimeInSec g)) <+> str "s" 
+                  ]
+              else vBox
+                [
+                  str "  Remaining Time: " <+> str (show (getRemainTimeInSec g)) <+> str "s",
+                  if g ^. remainTime <=30*timeScale && g ^. remainTime>0
+                    then vBox 
+                    [
+                      str "  Time's nearly up!",
+                      str "  Hurry up, otherwise",
+                      str "  challenge will fail!" 
+                    ]
+                  else if  g ^. remainTime==0
+                    then vBox
+                    [
+                      str "  Time's up!",
+                      str "  Challenge failed!",
+                      str "  Press 'q' to exit." 
+                    ]
+                  else emptyWidget
+                ]
+          ]
+          else if isGameEnd g 
+            then vBox
+              [
+                str "  Game Completed!",
+                str "  Exit in " <+> str (show (getRemainTimeInSec g)) <+> str "s"
+              ]
             else emptyWidget
         , if g^.isChallenge && g ^. remainTime <=30*1000 then str "Time's nearly up. Hurry up!" else emptyWidget
         , if g^.isChallenge && g ^. level == g^.maxLevel && isGameEnd g then str "Congratulations! Challenge Completed!" else emptyWidget
@@ -289,7 +332,6 @@ countEqual g = length $ filter (uncurry (==)) (zip xs ys)
     xs = f (g ^.board )
     ys = f (g ^. gtBoard)
     f b = sort (map (\(k, Cell c _ _ _) -> (k, c)) (M.toList b))
-
 
 
 

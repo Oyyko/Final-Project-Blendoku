@@ -28,6 +28,10 @@ module Blendoku
     , swapWithChosen
     , execBlendokuGame
     , evalBlendokuGame
+    -- this part is for testing
+    , keyColorList, generateEmptyBoard, generateNextColorWord
+    , updateBoard, shuffleBoard, computeGradientCells, computeGradientCoords
+    , timeScale
 )
 where
 
@@ -43,6 +47,9 @@ import Data.List (sortOn)
 import Test.QuickCheck (choose, elements, generate, Gen)
 import Data.IntMap (insert)
 import System.Random (mkStdGen, randomRs, mkStdGen)
+
+timeScale :: Int
+timeScale = 1000      -- 1 second = 1000 milliseconds, turn up to show more when time is running out
 
 data Direction = L | R | U | D
   deriving (Eq, Show)
@@ -217,8 +224,8 @@ initGame val = do
       , _hint            = False
       , _boardRows       = rows
       , _boardCols       = cols
-      , _remainTime     = 60*5*1000      -- 5 minutes      
-      , _isChallenge    = val == 5
+      , _remainTime     = 60*5*timeScale     -- 5 minutes      
+      , _isChallenge    = isChallenge
       , _maxLevel       = 4
     }
 
