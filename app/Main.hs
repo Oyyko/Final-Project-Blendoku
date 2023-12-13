@@ -1,6 +1,5 @@
 module Main (main) where
 
-import Lib
 import GameUI (playGame)
 import PickGameType (pickGameType)
 import InputPlayerName (inputPlayerName)

@@ -28,7 +28,6 @@ library
       Blendoku
       GameUI
       InputPlayerName
-      Lib
       PickGameType
   other-modules:
       Paths_Blendoku
