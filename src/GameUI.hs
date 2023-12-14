@@ -27,7 +27,7 @@ import Blendoku
 data Tick = Tick
 type Name = ()
 
-data UI = UI    --不需要用UI的参数
+data UI = UI    --no need to use UI's parameter 
   {
     _game    :: Game         -- ^ blendoku game
   , _paused  :: Bool         -- ^ game paused
@@ -268,7 +268,7 @@ playGame :: Int -> String -> IO Game
 playGame gameType playerName = do
   let delay = 1000           -- unit: microsecond (1 second = 1,000,000 microseconds)
   chan <- newBChan 10
-  void . forkIO $ forever $ do      -- 无限循环：Tick计时
+  void . forkIO $ forever $ do      -- unlimited loop: Tick -> delay -> Tick -> delay -> ...
     writeBChan chan Tick
     threadDelay delay
   (lvl, isChallenge) <- if gameType == 5 then return (0, True) else return (gameType, False)
