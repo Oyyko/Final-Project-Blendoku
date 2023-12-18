@@ -15,15 +15,17 @@ In Blendoku, players are given a grid of squares, some with colors provided, som
 We found Blendoku on the App Store as a game based on iOS released by Lonely Few LLC in 2015. A lot of people liked playing it. Even though the company doesn't update it anymore, many fans made their own versions of Blendoku. 
 
 
-Searching for the keyword "Blendoku" on GitHub reveals implementations in JavaScript, PHP, TypeScript, C++, Java, Ruby, and Swift. **As of our knowledge cutoff on the date of our proposal (11/17/2023), there is no implementation in Haskell yet.**
+Searching for the keyword "Blendoku" on GitHub reveals implementations in JavaScript, PHP, TypeScript, C++, Java, Ruby, and Swift. **As of our knowledge cutoff on the date of our proposal (11/17/2023), there is no implementation in Haskell yet.** We also referred to some structures and UI implementations in a haskell-based [Tetris game](https://github.com/SamTay/tetris).
 
-Below is a `GIF` demonstrating how to play Blendoku, along with some useful links for a better understanding of the game. The GIF was created by running [the website](https://karlbao.github.io/Blendoku/), a demo project that we adopt as a non-Haskell reference for completing ours.
-
-
-![How to play blendoku](docs/demo-blendoku.gif)
 - [A demo to blendoku](http://www.blendoku.com/)
 - [Blendoku2 on AppStore](https://apptopia.com/ios/app/1017177662/about)
 - [Github search result for "Blendoku"](https://github.com/search?q=Blendoku&type=repositories)
+
+Below is a `GIF` demonstrating how to play Blendoku, along with some useful links for a better understanding of the game. The GIF was created by running [the website](https://karlbao.github.io/Blendoku/), a demo project that we adopt as a non-Haskell reference for completing ours. 
+
+
+![How to play blendoku](docs/demo-blendoku.gif)
+
 
 ## How to play (Install and run)
 ```shell
