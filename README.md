@@ -15,7 +15,7 @@ In Blendoku, players are given a grid of squares, some with colors provided, som
 We found Blendoku on the App Store as a game based on iOS released by Lonely Few LLC in 2015. A lot of people liked playing it. Even though the company doesn't update it anymore, many fans made their own versions of Blendoku. 
 
 
-Searching for the keyword "Blendoku" on GitHub reveals implementations in JavaScript, PHP, TypeScript, C++, Java, Ruby, and Swift. **As of our knowledge cutoff on the date of our proposal (11/17/2023), there is no implementation in Haskell yet.** We also referred to some structures and UI implementations in a haskell-based [Tetris game](https://github.com/SamTay/tetris).
+Searching for the keyword "Blendoku" on GitHub reveals implementations in JavaScript, PHP, TypeScript, C++, Java, Ruby, and Swift. **As of our knowledge cutoff on the date of our proposal (11/17/2023), there is no implementation in Haskell yet.** We referred to the file structure in a haskell-based [Tetris game](https://github.com/SamTay/tetris), but we have implemented all the features of our game from scratch. 
 
 - [A demo to blendoku](http://www.blendoku.com/)
 - [Blendoku2 on AppStore](https://apptopia.com/ios/app/1017177662/about)
